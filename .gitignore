@@ -40,7 +40,8 @@ journal.*
 # Alarm files
 adm/etc/alarms/*.txt
 
-# Drive stuff
+# Driver stuff
 /adm/dist/bin/
 /adm/dist/run.log
 /include/driver/
+/fluffos_parser
