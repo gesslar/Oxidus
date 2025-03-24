@@ -12,11 +12,18 @@
 inherit STD_ITEM;
 inherit STD_CONTAINER;
 
+// Forward declarations
+private void decay(int it);
+public void setup_corpse(object dead, object killer);
+public string query_killer_name();
+public string query_dead_name();
+public int is_pc_corpse();
+public int is_npc_corpse();
+public int is_corpse();
+
+// Variables
 private string dead_name, killer_name;
 private nosave int pc_corpse, npc_corpse;
-
-void decay(int it);
-
 private nosave string *_shorts = ({
   "the dead body of {NAME}",
   "the bloated body of {NAME}",
@@ -27,7 +34,7 @@ private nosave string *_shorts = ({
   "the skeletal remains of {NAME}",
 });
 
-void setup_corpse(object dead, object killer) {
+public void setup_corpse(object dead, object killer) {
   string *corpse_shorts = copy(_shorts);
   string short = shift(ref corpse_shorts);
 
@@ -50,13 +57,13 @@ void setup_corpse(object dead, object killer) {
   call_out_walltime((: decay, corpse_shorts :), 5.0+random_float(5.0));
 }
 
-string query_killer_name() { return killer_name; }
-string query_dead_name() { return dead_name; }
+public string query_killer_name() { return killer_name; }
+public string query_dead_name() { return dead_name; }
 
-int is_pc_corpse() { return pc_corpse; }
-int is_npc_corpse() { return npc_corpse; }
+public int is_pc_corpse() { return pc_corpse; }
+public int is_npc_corpse() { return npc_corpse; }
 
-void decay(string *corpse_shorts) {
+private void decay(string *corpse_shorts) {
   string short;
 
   if(!environment())
@@ -77,11 +84,4 @@ void decay(string *corpse_shorts) {
   call_out_walltime((: decay, corpse_shorts :), 5.0+random_float(5.0));
 }
 
-int is_corpse() { return 1; }
-
-mixed direct_dispose_obj(object ob, string arg) {
-  if(!is_corpse())
-    return "#You cannot dispose of that." ;
-
-  return 1 ;
-}
+public int is_corpse() { return 1; }

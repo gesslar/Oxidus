@@ -183,6 +183,9 @@ void rehash_capacity() {
   if(ignore_capacity())
     return;
 
+  if(living() && !query_capacity())
+    set_capacity(1000);
+
   total = 0;
   obs = all_inventory();
   foreach(ob in obs) {

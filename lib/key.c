@@ -32,21 +32,4 @@ public string query_key_id() {
   return _key_id;
 }
 
-/**
- *
- * @param {STD_CONTAINER} container The container to be unlocked.
- * @param {OBJ_KEY} key The key to unlock the container.
- * @param {string} arg1 The container string supplied by the user.
- * @param {string} arg2 The key string supplied by the user.
- */
-mixed indirect_unlock_obj_with_obj(object container, object key, string arg1, string arg2) {
-  if(environment() != previous_object())
-    return "#You must be holding something to unlock with it.";
-
-  if(container->query_key_id() != key->query_key_id())
-    return "#That key does not turn this lock.";
-
-  return 1;
-}
-
 public int is_key() { return 1; }

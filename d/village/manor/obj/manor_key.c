@@ -10,7 +10,7 @@
  * 2025-03-19 - Gesslar - Created
  */
 
-inherit OBJ_KEY;
+inherit LIB_KEY;
 
 void setup() {
   set_name("key");

@@ -7,20 +7,19 @@
 #include <gmcp_defines.h>
 #include <input.h>
 #include <inventory.h>
+#include <lib.h>
 #include <messaging.h>
 #include <modules.h>
 #include <move.h>
 #include <mudlib.h>
 #include <objects.h>
+#include <rooms.h>
 #include <runtime_config.h>
 #include <signal.h>
 #include <type.h>
 
 #define SIMUL_OB     "/adm/obj/simul_efun"
 #define LOGIN_OB     "/adm/obj/login"
-#define ROOM_VOID    "/d/std/void"
-#define ROOM_FREEZER "/d/std/freezer"
-#define ROOM_START   "/d/village/square"
 
 #define true 1
 #define false 0

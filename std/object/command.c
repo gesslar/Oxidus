@@ -101,6 +101,11 @@ mapping query_commands() {
   return copy(_commands);
 }
 
+string *query_all_commands() {
+  return commands();
+}
+
+
 /**
  * Finds all commands that share the same action handler.
  *
@@ -225,6 +230,12 @@ void add_standard_paths() {
   filter(paths, (: add_path :));
 }
 
+void add_ghost_paths() {
+  string *paths = explode_file("/adm/etc/ghost_paths");
+
+  filter(paths, (: add_path :));
+}
+
 nomask varargs string *query_command_history(int index, int range) {
   if(this_body() != this_object() && !adminp(previous_object()))
     return ({});
@@ -272,8 +283,6 @@ int command_hook(string arg) {
   else
     complete = verb;
 
-  if(verb_hook(complete))
-    return 1;
 
   // First let's check in our immediate inventory
   obs = all_inventory();
@@ -368,37 +377,13 @@ private nomask int evaluate_result(mixed result) {
   return result;
 }
 
-varargs int verb_hook(string arg, int debug_level) {
-  object env = top_environment();
-  object *obs = accessible_objects(env);
-  string exec;
-  mixed result;
 
-  result = parse_sentence(arg, debug_level, obs || ({}));
-
-  if(stringp(result)) {
-    tell(append(result, "\n"));
-    return 1;
-  }
-
-  /**
-   * If the result is 0, the parser didn't know the verb so we keep looking.
-   * If a 1 was returned, then nothing more needs to be done.
-   * If the result is -1 or -2, the parser figured something was wrong.
-   *
-   */
-  switch(result) {
-    case 0:
-      return 0;
-    case 1:
-      return 1;
-    case -1:
-      return 0;
-    case -2:
-      tell("You aren't able to do that.\n");
-      return 1;
-  }
-
-  error("Result is undefined.");
-  return 1;
+int force_me(string cmd) {
+  if(
+        this_body() != this_object()
+    && !adminp(previous_object())
+    && !adminp(this_caller()))
+    return 0;
+  else
+    return command(cmd);
 }

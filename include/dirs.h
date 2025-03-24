@@ -12,6 +12,7 @@
 #define DIR_DAEMONS             DIR_ADM "daemons/"
 #define DIR_DAEMON_MODULES      DIR_DAEMONS "modules/"
 #define DIR_DOMAIN              "/d/"
+#define DIR_LIB                 "/lib/"
 #define DIR_OBJ                 "/obj/"
 #define DIR_OBJ_MUDLIB          DIR_OBJ "mudlib/"
 #define DIR_STD                 "/std/"
