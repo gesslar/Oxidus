@@ -144,7 +144,7 @@ varargs int set_door_open(string direction, int bool, int silent) {
  * @param {string} direction - The direction to check
  * @returns {int} 1 if door is open, 0 if closed or locked, null if door doesn't exist
  */
-int query_door_open(string direction) {
+int is_door_open(string direction) {
   class Door door;
 
   if(nullp(door = _doors[direction]))
@@ -200,7 +200,7 @@ int set_door_locked(string direction, int bool, int silent) {
  * @param {string} direction - The direction to check
  * @returns {int} 1 if door is locked, 0 if not locked, null if door doesn't exist
  */
-int query_door_locked(string direction) {
+int is_door_locked(string direction) {
   class Door door;
 
   if(nullp(door = _doors[direction]))
@@ -395,10 +395,10 @@ void reset_doors() {
 
       foreach(string other_dir in other_room->query_exit_ids()) {
         if(other_room->query_exit_dest(other_dir, true) == this_object()) {
-          if(other_room->query_door_open(other_dir)) {
+          if(other_room->is_door_open(other_dir)) {
             set_door_open(dir, true, true);
             break;
-          } else if(other_room->query_door_locked(other_dir)) {
+          } else if(other_room->is_door_locked(other_dir)) {
             set_door_locked(dir, true, true);
             break;
           }
@@ -418,7 +418,9 @@ void reset_doors() {
 varargs mixed query_door_status(string direction, int as_number) {
   class Door door;
 
-  if(nullp(door = _doors[direction]))
+  direction = resolve_direction_from_input(direction);
+
+  if(nullp(direction) || nullp(door = _doors[direction]))
     return null;
 
   if(as_number) {
@@ -468,8 +470,8 @@ mixed can_open_door(string direction) {
 /**
  * Handles attempted door closing commands.
  *
- * @param {string} direction - The direction or "door" for auto-detection
- * @returns {mixed} 1 if can close, error message string if not
+ * @param {string} direction - The direction or "door" for auto-detection.
+ * @returns {mixed} 1 if can close, error message string if not.
  */
 mixed can_close_door(string direction) {
   if(!stringp(direction) || falsy(direction))
@@ -520,4 +522,20 @@ mixed can_lock_door(string direction) {
     default:
       return 0;
   }
+}
+
+public string resolve_direction_from_input(string direction) {
+  string *directions;
+
+  // First, let's try to find an exit directly by its name.
+  directions = find_keys(_doors, (: $2 == $(direction) :));
+  if(sizeof(directions))
+    return directions[0];
+
+  // Okay, let's try to find a door by its id.
+  directions = id_door(direction);
+  if(sizeof(directions))
+    return directions[0];
+
+  return null;
 }

@@ -41,15 +41,15 @@ inherit __DIR__ "wealth";
 inherit M_ACTION;
 inherit M_LOG;
 
-/** @type {STD_BODY} */ object su_body;
-
 /* Prototypes */
 
 void mudlib_setup() {
   if(!clonep() &&
      origin() != ORIGIN_LOCAL &&
-     previous_object() != body_d())
+     previous_object() != body_d()
+    ) {
     return;
+  }
 
   enable_commands();
   add_standard_paths();
@@ -80,20 +80,10 @@ string *query_weapon_slots() {
   return copy(weapon_slots);
 }
 
-string *query_all_commands() {
-  return commands();
-}
-
-void rehash_capacity() {
-  if(mud_config("USE_MASS") && !query_capacity())
-    set_capacity(1000);
-
-  ::rehash_capacity();
-}
-
 void die() {
   object
-  /** @type {OBJ_CORPSE} */ corpse,
+  /** @type {STD_BODY} */   body,
+  /** @type {LIB_CORPSE} */ corpse,
   /** @type {STD_ITEM} */   ob,
   /** @type {STD_ITEM} */   next;
 
@@ -105,17 +95,18 @@ void die() {
 
   stop_all_attacks();
 
-  if(objectp(su_body)) {
-    exec(su_body, this_object());
-    su_body->move(environment());
-    su_body->simple_action("$N $vis violently ejected from the body of $o.", this_object());
+  if(objectp(body = query_su_body())) {
+    exec(body, this_object());
+    body->move(environment());
+    body->simple_action("$N $vis violently ejected from the body of $o.", this_object());
     clear_su_body();
   }
 
   simple_action("$N $vhave perished.");
   save_body();
   emit(SIG_PLAYER_DIED, this_object(), killed_by());
-  corpse = new(OBJ_CORPSE);
+
+  corpse = new(LIB_CORPSE);
   corpse->setup_corpse(this_object(), killed_by());
 
   if(function_exists("query_loot_table"))
@@ -135,7 +126,7 @@ void die() {
   if(query_total_wealth()) {
     mapping wealth = query_all_wealth();
     foreach(string currency, int amount in wealth) {
-      object coin = new(OBJ_COIN);
+      object coin = new(LIB_COIN);
       coin->set_up(currency, amount);
       if(coin->move(corpse))
         if(coin)
@@ -198,10 +189,6 @@ void event_remove(object prev) {
   }
 }
 
-void receive_message(string type, string msg) {
-  do_receive(msg, DIRECT_MSG);
-}
-
 varargs int move_living(mixed dest, string dir, string depart_message, string arrive_message) {
   int result;
   object curr = environment();
@@ -248,18 +235,20 @@ varargs int move_living(mixed dest, string dir, string depart_message, string ar
   return result;
 }
 
-mixed* query_commands() {
-  return commands();
-}
+/** Body bodily functions */
 
-int force_me(string cmd) {
-  if(
-        this_body() != this_object()
-    && !adminp(previous_object())
-    && !adminp(this_caller()))
-    return 0;
-  else
-    return command(cmd);
+/**
+ * Reports whether the body is presently able. This is a general status,
+ * such as, are they a player or monster and alive, can they manipulate
+ * things, like not stunned, etc.
+ *
+ * TODO: For now, just returns 1 until more is implemented that will affect
+ * this.
+ *
+ * @returns {1|string} Returns 1 if passes ability check, otherwise a string error message.
+ */
+int is_able() {
+  return 1;
 }
 
 //Misc functions
@@ -275,14 +264,37 @@ int query_log_level() {
   return to_int(query_pref("log_level"));
 }
 
+/* Switch User Functionality */
+
+/**
+ * This variable holds the body we are inhabiting if not our own.
+ *
+ * @type {STD_BODY}
+ */
+object su_body;
+
+/**
+ * Register the body we have moved into.
+ *
+ * @param {STD_BODY} source - The body we are now inhabiting.
+ */
 void set_su_body(object source) {
   su_body = source;
 }
 
+/**
+ * Returns the body we are inhabiting. Will be undefined if
+ * we are already in our own body.
+ *
+ * @returns {STD_BODY|0} The body we are currently inhabiting, or null.
+ */
 object query_su_body() {
   return su_body;
 }
 
+/**
+ * Resets our current switch user body to null.
+ */
 void clear_su_body() {
   su_body = null;
 }

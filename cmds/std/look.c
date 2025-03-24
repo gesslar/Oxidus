@@ -108,7 +108,7 @@ mixed render_room(object tp, object room, int brief) {
 /*
     exits = map(exits, function(string exit, object room, string *doors) {
       if(of(exit, doors)) {
-        if(room->query_door_open(exit))
+        if(room->is_door_open(exit))
           return sprintf("(%s)", exit);
         else
           return sprintf("[%s]", exit);
@@ -127,7 +127,7 @@ mixed render_room(object tp, object room, int brief) {
   if(sizeof(doors) > 0) {
     data = "";
     foreach(string door in doors) {
-      if(room->query_door_open(door)) {
+      if(room->is_door_open(door)) {
         data += sprintf("The %s door is open.\n", door);
       } else {
         data += sprintf("The %s door is closed.\n", door);

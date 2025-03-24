@@ -15,7 +15,7 @@ varargs mixed allow_walk_direction(object ob, object room, string dir) {
   if(!room->valid_exit(dir))
     return "There is no exit in that direction.";
 
-  if(room->valid_door(dir) && !room->query_door_open(dir))
+  if(room->valid_door(dir) && !room->is_door_open(dir))
     return sprintf("The path %s is closed.", dir);
 
   return 1;

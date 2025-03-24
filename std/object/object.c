@@ -48,7 +48,6 @@ private nosave mixed _prevent_get = 0;
  */
 private varargs void create(mixed args...) {
   set_notify_destruct(1);
-  parse_init();
 
   _create_args = args;
   if(!real_name) {

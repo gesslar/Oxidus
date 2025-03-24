@@ -80,16 +80,6 @@ int can_receive(object ob) {
 }
 
 /**
- * Called when an object is received by this container.
- *
- * This function can be overridden to implement special effects
- * when objects enter the container.
- *
- * @param {object} ob - The object that entered the container
- */
-void receive_effect(object ob) {}
-
-/**
  * Checks if an object can be released from this container.
  *
  * This function can be overridden to add restrictions on what
@@ -103,14 +93,23 @@ int can_release(object ob) {
 }
 
 /**
- * Called when an object is released from this container.
+ * Handles base events when an item is released from this container.
  *
- * This function can be overridden to implement special effects
- * when objects leave the container.
+ * This function is called whenever an object moves out of this container.
+ * It generates standard released events and GMCP notifications. If this
+ * is the last item leaving the container, it can trigger container_empty().
  *
- * @param {object} ob - The object that left the container
+ * @param {object} ob - The object being removed from the container
+ * @param {object} new_env - The new environment the object is moving to
  */
-void release_effect(object ob) {}
+void event_base_released(object ob, object new_env) {
+  event(this_object(), "released", ob, new_env);
+  event(this_object(), "gmcp_item_removed", ob);
+
+  // If we are empty, notify ONLY this object...
+  if(!sizeof(all_inventory()))
+    event(({this_object()}), "container_empty", ob);
+}
 
 /**
  * Sets whether this container ignores capacity limits.
@@ -206,6 +205,26 @@ int is_closed() {
   return _closed;
 }
 
+mixed can_close_container() {
+  if(!is_closeable())
+    return 0;
+
+  if(is_closed())
+    return "That is already closed.";
+
+  return 1;
+}
+
+mixed can_open_container() {
+  if(!is_closeable())
+    return 0;
+
+  if(!is_closed())
+    return "That is already open.";
+
+  return 1;
+}
+
 /**
  * Sets the locked state of this container.
  *
@@ -244,6 +263,16 @@ int is_opaque() {
 
 private nosave string _key_id;
 
+varargs mixed query_container_status(int as_number) {
+  if(is_locked())
+    return as_number ? 3 : "locked";
+
+  if(is_closed())
+    return as_number ? 2 : "closed";
+
+  return as_number ? 1 : "open";
+}
+
 public void set_key_id(string str) {
   assert_arg(stringp(str) && truthy(str), 1, "Invalid key id.");
 
@@ -254,79 +283,6 @@ public string query_key_id() {
   return _key_id;
 }
 
-mixed indirect_put_obj_in_obj(object ob, object container, string arg1, string arg2) {
-  if(!ob)
-    return 1;
-
-  if(ob == container)
-    return "#You cannot put " + get_short(ob) + " in itself.";
-
-  if(is_closeable() && is_closed())
-    return "#" + get_short() + " is closed.";
-
-  if(!can_receive(ob))
-    return "#" + get_short() + " cannot hold " + get_short(ob) + ".";
-
-  if(!can_hold_object(ob))
-    return "#" + get_short() + " cannot hold " + get_short(ob) + ".";
-
-  if(ob->is_container())
-    return "#You cannot put a container inside another container.";
-
-  return 1;
-}
-
-mixed direct_open_obj(object ob, string arg1) {
-  if(!is_closeable())
-    return 0;
-
-  if(!is_closed())
-    return "#" + get_short() + " is already open.";
-
-  if(is_locked())
-    return "#" + get_short() + " appears to be locked.";
-
-  return 1;
-}
-
-mixed direct_close_obj(object ob, string arg1) {
-  if(!is_closeable())
-    return 0;
-
-  if(is_closed())
-    return "#" + get_short() + " is already closed.";
-
-  return 1;
-}
-
-/**
- *
- * @param {STD_CONTAINER} container The container to be unlocked.
- * @param {OBJ_KEY} key The key to unlock the container.
- * @param {string} arg1 The container string supplied by the user.
- * @param {string} arg2 The key string supplied by the user.
- */
-mixed direct_unlock_obj_with_obj(object container, object key, string arg1, string arg2) {
-  if(!is_closeable())
-    return 0;
-
-  if(!container || !key)
-    return 1;
-
-  if(!container->is_container() || !key->is_key())
-    return 0;
-
-  if(container->query_key_id() != key->query_key_id())
-    return "#That key does not turn this lock.";
-
-  if(!is_closed())
-    return "#" + get_short() + " is already open.";
-
-  if(!is_locked())
-    return "#" + get_short() + " does not appear to be locked.";
-
-  return 1;
-}
 
 /**
  * Identifies this object as a container.

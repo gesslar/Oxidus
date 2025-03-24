@@ -123,7 +123,7 @@ private void roll_back(mixed *rollback) {
  * Handles mass tracking, capacity limits, and related events.
  * Sends GMCP updates when appropriate.
  *
- * @param {object|string} dest - Destination object or filename
+ * @param {STD_CONTAINER|string} dest - Destination object or filename
  * @returns {int} Move result code (MOVE_OK or an error code)
  */
 int move(mixed dest) {
@@ -216,16 +216,14 @@ int move(mixed dest) {
   // Ok, we can move now.
   move_object(dest);
 
+  // Notifications for everybody!
   event(this_object(), "moved", prev);
-  if(prev && this_object()) {
-    event(prev, "released", environment());
-    event(prev, "gmcp_item_remove", prev);
-  }
 
-  if(this_object()) {
-    event(environment(), "received", prev);
-    event(environment(), "gmcp_item_add", environment());
-  }
+  if(prev && this_object())
+    event(prev, "base_released", environment());
+
+  if(this_object())
+    event(environment(), "base_received", prev);
 
   if(userp())
     GMCP_D->send_gmcp(this_object(), GMCP_PKG_CHAR_ITEMS_LIST, GMCP_LIST_ROOM);
@@ -237,20 +235,4 @@ int move(mixed dest) {
 
     return MOVE_DESTRUCTED;
   }
-}
-
-mixed direct_put_obj_in_obj(object ob, object container, string arg1, string arg2) {
-  if(!container)
-    return 1;
-
-  if(environment() != previous_object())
-    return "#You must be holding something to put it somewhere.";
-
-  if(call_if(ob, "prevent_put"))
-    return "#" + get_short(ob) + " cannot be put down.";
-
-  if(call_if(ob, "prevent_drop"))
-    return "#" + get_short(ob) + " cannot be dropped.";
-
-  return 1 ;
 }

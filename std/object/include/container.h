@@ -20,8 +20,9 @@ void set_locked(int i);
 int is_locked();
 void set_opaque(int i);
 int is_opaque();
-int is_container();
+varargs mixed query_container_status(int as_number);
 public void set_key_id(string str);
 public string query_key_id();
+int is_container();
 
 #endif // __CONTAINER_H__

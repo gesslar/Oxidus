@@ -215,8 +215,6 @@ void rehash_ids() {
 
   _ids = filter(distinct_array(tmp), (: truthy :));
   _plural_ids = map(_ids, (: pluralize :));
-
-  parse_refresh();
 }
 
 string *parse_command_id_list() {

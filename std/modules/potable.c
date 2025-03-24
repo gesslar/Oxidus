@@ -9,6 +9,8 @@
  * 2024-08-06 - Gesslar - Created
  */
 
+#include "include/potable.h"
+
 inherit M_USES;
 
 private nomask int _potable = null;
@@ -18,117 +20,119 @@ private nomask mapping _default_actions = ([
 ]);
 
 private nomask mapping _actions = ([
-    "drink" : ([
-        "action": null,
-        "self"  : null,
-        "room"  : null
-    ]),
-    "sip"   : ([
-        "action": null,
-        "self"  : null,
-        "room"  : null
-    ]),
+  "drink" : ([
+    "action": null,
+    "self"  : null,
+    "room"  : null
+  ]),
+  "sip"   : ([
+    "action": null,
+    "self"  : null,
+    "room"  : null
+  ]),
 ]);
 
-void set_drink_action(string action) {
-    _actions["drink"]["action"] = action;
+public void set_drink_action(string action) {
+  _actions["drink"]["action"] = action;
 }
 
-void set_self_drink_action(string action) {
-    _actions["drink"]["self"] = action;
+public void set_self_drink_action(string action) {
+  _actions["drink"]["self"] = action;
 }
 
-void set_room_drink_action(string action) {
-    _actions["drink"]["room"] = action;
+public void set_room_drink_action(string action) {
+  _actions["drink"]["room"] = action;
 }
 
-void set_sip_action(string action) {
-    _actions["sip"]["action"] = action;
+public void set_sip_action(string action) {
+  _actions["sip"]["action"] = action;
 }
 
-void set_self_sip_action(string action) {
-    _actions["sip"]["self"] = action;
+public void set_self_sip_action(string action) {
+  _actions["sip"]["self"] = action;
 }
 
-void set_room_sip_action(string action) {
-    _actions["sip"]["room"] = action;
+public void set_room_sip_action(string action) {
+  _actions["sip"]["room"] = action;
 }
 
-int set_potable(int potable) {
-    _potable = potable;
+public int set_potable(int potable) {
+  _potable = potable;
 
-    return _potable;
+  return _potable;
 }
 
-int is_potable() {
-    return _potable;
+public int is_potable() {
+  return _potable;
 }
 
-int drink(object tp) {
-    if(!_potable)
-        return 0;
+/**
+ * Drink the object.
+ *
+ * @param {STD_BODY} user - The user drinking the object.
+ * @returns {mixed} 1 if the object was successfully drank, otherwise a failure message.
+ */
+protected mixed drink(object user) {
+  if(!_potable)
+    return "You can't drink that.";
 
-    if(nullp(adjust_uses(-query_uses())))
-        return 0;
+  if(nullp(adjust_uses(-query_uses())))
+    return "There is nothing left to drink.";
 
-    if(_actions["drink"]["action"])
-        tp->simple_action(_actions["drink"]["action"], this_object());
-    else {
-        if(!_actions["drink"]["self"] && !_actions["drink"]["room"]) {
-            tp->simple_action(_default_actions["drink"], this_object());
-        } else {
-            if(_actions["drink"]["self"])
-                tp->simple_action(_actions["drink"]["self"], this_object());
-            else
-                tp->simple_action(_default_actions["drink"], this_object());
-            if(_actions["drink"]["room"])
-                tp->simple_action(_actions["drink"]["room"], this_object());
-            else
-                tp->simple_action(_default_actions["drink"], this_object());
-        }
+  if(_actions["drink"]["action"]) {
+    user->simple_action(_actions["drink"]["action"], this_object());
+  } else {
+    if(!_actions["drink"]["self"] && !_actions["drink"]["room"]) {
+      user->simple_action(_default_actions["drink"], this_object());
+    } else {
+      if(_actions["drink"]["self"])
+        user->simple_action(_actions["drink"]["self"], this_object());
+      else
+        user->simple_action(_default_actions["drink"], this_object());
+      if(_actions["drink"]["room"])
+        user->simple_action(_actions["drink"]["room"], this_object());
+      else
+        user->simple_action(_default_actions["drink"], this_object());
     }
+  }
 
-
-    return 1;
+  return 1;
 }
 
-int sip(object tp, int amount) {
-    if(!_potable)
-        return 0;
+/**
+ * Sip the object.
+ *
+ * @param {STD_BODY} user - The user sipping the object.
+ * @param {int} amount - The amount to sip.
+ * @returns {mixed} 1 if the object was successfully sipped, otherwise a failure message.
+ */
+protected mixed sip(object user, int amount) {
+  if(!_potable)
+    return "You can't sip that.";
 
-    if(nullp(adjust_uses(-amount)))
-        return 0;
+  if(nullp(adjust_uses(-amount)))
+    return "There is nothing left to sip.";
 
-    if(_actions["sip"]["action"])
-        tp->simple_action(_actions["sip"]["action"], this_object());
-    else {
-        if(!_actions["sip"]["self"] && !_actions["sip"]["room"]) {
-            tp->simple_action(_default_actions["sip"], this_object());
-        } else {
-            if(_actions["sip"]["self"])
-                tp->simple_action(_actions["sip"]["self"], this_object());
-            else
-                tp->simple_action(_default_actions["sip"], this_object());
-            if(_actions["sip"]["room"])
-                tp->simple_action(_actions["sip"]["room"], this_object());
-            else
-                tp->simple_action(_default_actions["sip"], this_object());
-        }
+  if(_actions["sip"]["action"]) {
+    user->simple_action(_actions["sip"]["action"], this_object());
+  } else {
+    if(!_actions["sip"]["self"] && !_actions["sip"]["room"]) {
+        user->simple_action(_default_actions["sip"], this_object());
+    } else {
+      if(_actions["sip"]["self"])
+        user->simple_action(_actions["sip"]["self"], this_object());
+      else
+        user->simple_action(_default_actions["sip"], this_object());
+      if(_actions["sip"]["room"])
+        user->simple_action(_actions["sip"]["room"], this_object());
+      else
+        user->simple_action(_default_actions["sip"], this_object());
     }
+  }
 
-    return 1;
+  return 1;
 }
 
-void reset_potable() {
-    reset_uses();
+public void reset_potable() {
+  reset_uses();
 }
-
-mixed try_to_drink(object ob, string arg) {
-  if(environment() != previous_object())
-    return "#You must be holding something to drink it." ;
-
-  return 1 ;
-}
-
-mixed direct_drink_obj(object ob, string arg) { return try_to_drink(ob, arg) ; }
-mixed direct_sip_obj(object ob, string arg) { return try_to_drink(ob, arg) ; }

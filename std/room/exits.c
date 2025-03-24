@@ -80,7 +80,7 @@ string query_exit(string id) {
  * @returns {object} The destination room object, or null if not found
  */
 varargs object query_exit_dest(string id, int loaded) {
-  mixed dest   = _exits[id];
+  mixed dest = _exits[id];
 
   if(!dest)
     return null;
@@ -106,10 +106,10 @@ varargs object query_exit_dest(string id, int loaded) {
 /**
  * Returns all destination room objects.
  *
- * @param {int} loaded - If true, only returns already loaded objects
+ * @param {int} [loaded=0] - If true, only returns already loaded objects
  * @returns {object*} Array of destination objects
  */
-object *query_exit_dests(int loaded) {
+varargs object *query_exit_dests(int loaded) {
   object *dests = ({ });
   string *exits = query_exit_ids();
 

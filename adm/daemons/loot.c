@@ -194,7 +194,7 @@ private void drop_coins(object tp, mixed item, object source) {
   } else
     return;
 
-  coin_ob = new(OBJ_COIN, type, num);
+  coin_ob = new(LIB_COIN, type, num);
 
   move_result = coin_ob->move(source);
   if(move_result)

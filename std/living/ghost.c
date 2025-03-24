@@ -18,35 +18,35 @@ inherit STD_BODY;
 inherit M_GMCP;
 
 void mudlib_setup() {
-    // if(origin() != ORIGIN_DRIVER && origin() != ORIGIN_LOCAL) return;
-    path = ({"/cmds/ghost/"});
-    set_log_level(0);
-    if(clonep())
-        slot(SIG_SYS_CRASH, "on_crash");
+  set_log_level(0);
+  if(clonep())
+    slot(SIG_SYS_CRASH, "on_crash");
 }
 
 /* Connection functions */
 void setup_body() {
-    add_action("command_hook", "", 1);
-    add_action("revive", "revive");
-    set_living_name(query_real_name());
-    set_id(({query_real_name()}));
-    set_heart_beat(mud_config("DEFAULT_HEART_RATE"));
-    set_race("ghost");
-    set_level(1.0);
-    set_hp(1.0);
-    set_sp(1.0);
-    set_mp(1.0);
-    set_env("move_out", "$N drifts away to the $D.");
-    set_env("move_in", "$N drifts into the area.");
-    enable_commands();
-    if(!query_short()) set_short(query_name());
-    if(!query_pref("colour")) set_pref("colour", "off");
-    if(!query_pref("prompt")) set_pref("prompt", ">");
-    if(!query_pref("biff")) set_pref("biff", "off");
-    update_regen_interval();
-    init_vitals();
-    set_log_prefix(sprintf("(%O)", this_object()));
+  add_action("command_hook", "", 1);
+  add_action("revive", "revive");
+  set_living_name(query_real_name());
+  set_id(({query_real_name()}));
+  set_heart_beat(mud_config("DEFAULT_HEART_RATE"));
+  set_race("ghost");
+  set_level(1.0);
+  set_hp(1.0);
+  set_sp(1.0);
+  set_mp(1.0);
+  set_env("move_out", "$N drifts away to the $D.");
+  set_env("move_in", "$N drifts into the area.");
+  enable_commands();
+  add_ghost_paths();
+  if(!query_short()) set_short(query_name());
+  if(!query_pref("colour")) set_pref("colour", "off");
+  if(!query_pref("prompt")) set_pref("prompt", ">");
+  if(!query_pref("biff")) set_pref("biff", "off");
+  update_regen_interval();
+  init_vitals();
+  set_log_prefix(sprintf("(%O)", this_object()));
+  call_out("revive", 1);
 }
 
 int revive(string str) {

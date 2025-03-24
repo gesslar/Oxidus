@@ -27,30 +27,45 @@ void set_id(mixed str) {
   add_id("drink");
 }
 
-int drink(object user) {
-  if(!::drink(user))
-    return 0;
-
-  if(query_uses() < 1)
-    remove();
+private mixed try_to_drink(object ob, string arg, string verb) {
+  if(environment() != previous_object())
+    return "You must be holding something to " + verb + " it.";
 
   return 1;
 }
 
-int sip(object user) {
-  int consumed;
-  string mess;
+public mixed direct_drink_obj(object ob, string arg) { return try_to_drink(ob, arg, "drink"); }
+public mixed direct_sip_obj(object ob, string arg) { return try_to_drink(ob, arg, "sip"); }
 
-  if(!::sip(user, 1))
-    return 0;
+/**
+ *
+ * @param {STD_BODY} user - The user drinking the object.
+ * @param {string} arg - The argument supplied by the user.
+ * @returns {int} The result of the drinking.
+ */
+public mixed e_drink_obj(object user, string arg) {
+  mixed result = drink(user);
 
-  if(query_uses() < 1)
+  if(result == 1 && query_uses() < 1) {
+    this_body()->my_action("$N $vhave drunk the last of the $o.", this_object());
     remove();
+  }
 
-  return 1;
+  return result;
 }
 
-string consume_message() {
+public int e_sip_obj(object user, string arg) {
+  mixed result = sip(user, 1);
+
+  if(result == 1 && query_uses() < 1) {
+    this_body()->my_action("$N $vhave drunk the last of the $o.", this_object());
+    remove();
+  }
+
+  return result;
+}
+
+public string consume_message() {
   int left;
   string mess;
 
@@ -76,4 +91,4 @@ string consume_message() {
   return mess;
 }
 
-int is_drink() { return 1; }
+public int is_drink() { return 1; }
