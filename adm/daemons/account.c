@@ -39,9 +39,20 @@ void setup() {
 /**
  * Creates a new account with the given name and password.
  *
+ * The function performs several validation checks before creating the account:
+ * - Verifies the caller has valid manipulation permissions
+ * - Validates name and password are proper strings
+ * - Ensures account doesn't already exist
+ * - Confirms password is properly encrypted (starts with $6$)
+ *
  * @param {string} name - The account name to create
  * @param {string} password - The encrypted password (must start with $6$)
  * @returns {int} 1 on success, 0 on failure
+ * @example
+ * int success = create_account("testuser", "$6$randomsalt$hashedpassword");
+ * if(success) {
+ *     write("Account created successfully!\n");
+ * }
  */
 int create_account(string name, string password) {
   mapping account;
