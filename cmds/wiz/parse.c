@@ -1,18 +1,48 @@
 /**
- * @file /cmds/wiz/parse.c
+ * @file /ox/lib/cmds/test/parse.c
  *
- * Tests a parse to see what it results in.
+ * A test command for the parser system.
  *
- * @created 2025-03-18 - Gesslar
- * @last_modified 2025-03-18 - Gesslar
- *
- * @history
- * 2025-03-18 - Gesslar - Created
+ * @created 2024-08-07 - Gesslar
+ * @last_modified 2024-08-07 - Gesslar
  */
 
-mixed main(object tp, string str) {
-  if(!str)
-    return "Parse what?";
+inherit STD_CMD;
 
-  return this_body()->verb_hook(str, 3) || "No parsed result.";
+/**
+ * Tests the parser with various grammar patterns.
+ *
+ * @param {object} actor - Player using the command
+ * @param {string} args - Command arguments
+ * @returns {int} 1 if successful, 0 otherwise
+ */
+mixed main(object actor, string args) {
+  string test_str = args;
+  mapping result;
+
+  _info("Testing parser with: " + test_str + "\n");
+
+  result = PARSE_D->interpret_command(test_str, actor);
+  if(!result) {
+    _error("Failed to interpret command.\n");
+    return 0;
+  }
+
+  _info("Results %O\n", result);
+
+  _info("Verb: " + identify(result["verb"]) + "\n");
+  _info("Args: " + identify(result["args"]) + "\n");
+
+  _info("Testing enhanced object finding...\n");
+
+  if (sizeof(args) > 0) {
+    object obj = PARSE_D->find_object_in_environment(result["args"], actor);
+
+    if (obj)
+      _ok("Found object: " + obj->query_short() + "\n");
+    else
+      _error("No object found matching: " + identify(args) + "\n");
+  }
+
+  return 1;
 }
