@@ -18,17 +18,12 @@ public nomask object compile_object(string file) {
     return 0;
 
   relative_path = implode(dir_parts[2..], "/");
-
-  relative_path = implode(dir_parts[2..], "/");
   e = catch(result = zone_daemon->compile_object(relative_path));
 
   if(e) {
     log_file("VIRTUAL", e);
     return 0;
   }
-
-  if(objectp(result))
-    result->set_virtual_master(base_name(result));
 
   return result;
 }

@@ -30,5 +30,6 @@ TRUE_COLOUR_REGEX
 #define SYSTEM_WARNING  "{{FF9900}}"
 #define SYSTEM_INFO     "{{FFFF66}}"
 #define SYSTEM_QUERY    "{{0066FF}}"
+#define SYSTEM_DEBUG    "{{CC00CC}}"
 
 #endif // __COLOUR_H__

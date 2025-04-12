@@ -1,0 +1,11 @@
+id: [meat]
+additional ids: [chunk]
+adj: [cat, raw, fresh]
+name: cat meat
+short: a chunk of cat meat
+long: >-
+  This is a fresh chunk of cat meat. It needs to be cooked before eating.
+mass: 25
+value: 30
+uses: 1
+properties: {food: yes, raw: yes}

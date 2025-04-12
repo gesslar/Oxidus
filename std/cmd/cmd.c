@@ -124,8 +124,48 @@ int _usage(object tp) {
   return 1;
 }
 
+private nosave string *_verb_rules = ({});
+
+// Verb functionality
+public void add_verb_rule(string rule) {
+  _verb_rules += ({ rule });
+}
+
+public void remove_verb_rule(string rule) {
+  _verb_rules -= ({ rule });
+}
+
+public void set_verb_rules(string *rules) {
+  _verb_rules = copy(rules);
+}
+
+public string *query_verb_rules() {
+  return copy(_verb_rules);
+}
+
+public int process_verb_rules(object caller, string arg) {
+  string err;
+  mixed result;
+
+  err = catch(result =
+    PARSE_D->handle_command(
+      this_object(),
+      query_file_name(),
+      arg,
+      deep_inventory(environment(caller)),
+      caller
+    )
+  );
+
+  return result;
+}
+
 int is_command() {
   return 1;
+}
+
+int is_verb() {
+  return sizeof(_verb_rules) > 0;
 }
 
 string usage (object caller) { return null; }

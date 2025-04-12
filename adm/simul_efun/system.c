@@ -155,6 +155,17 @@ string doc_dir() {
 }
 
 /**
+ * @property {string} type - The type of the message.
+ * @property {message} message - The message to send to the player.
+ *
+ * A class representing a message to be sent to a player.
+*/
+class SystemMessage {
+  string type;
+  string message;
+}
+
+/**
  * Logs a debug message, optionally formatted with arguments.
  *
  * If the first argument is not a string, it will be printed using %O
@@ -180,11 +191,12 @@ varargs void debug(mixed str, mixed args...) {
 }
 
 private nosave mapping _symbols = ([
-  "ok"      : ({ ({ SYSTEM_OK,      "" }), ({ "\u2022 ", "o ", "" }) }),
-  "error"   : ({ ({ SYSTEM_ERROR,   "" }), ({ "\u25CF ", "o ", "" }) }),
-  "warn"    : ({ ({ SYSTEM_WARNING, "" }), ({ "\u25B2 ", "o ", "" }) }),
-  "info"    : ({ ({ SYSTEM_INFO,    "" }), ({ "\u25A0 ", "o ", "" }) }),
-  "question": ({ ({ SYSTEM_QUERY,   "" }), ({ "\u25C6 ", "o ", "" }) }),
+  "ok"      : ({ ({ SYSTEM_OK,      "" }), ({ "\u2022 ", "o ", "" }) }), // • = bullet point
+  "error"   : ({ ({ SYSTEM_ERROR,   "" }), ({ "\u25CF ", "o ", "" }) }), // ● = black circle
+  "warn"    : ({ ({ SYSTEM_WARNING, "" }), ({ "\u25B2 ", "o ", "" }) }), // ▲ = black up-pointing triangle
+  "info"    : ({ ({ SYSTEM_INFO,    "" }), ({ "\u25A0 ", "o ", "" }) }), // ■ = black square
+  "question": ({ ({ SYSTEM_QUERY,   "" }), ({ "\u25C6 ", "o ", "" }) }), // ◆ = black diamond
+  "debug"   : ({ ({ SYSTEM_DEBUG,   "" }), ({ "\u25A1 ", "o ", "" }) }), // □ = white square
 ]);
 
 private string _format_message(string type, string str, mixed args...) {
@@ -216,17 +228,6 @@ private string _format_message(string type, string str, mixed args...) {
   str = sprintf(str, args...);
 
   return str;
-}
-
-/**
- * @property {string} type - The type of the message.
- * @property {message} message - The message to send to the player.
- *
- * A class representing a message to be sent to a player.
-*/
-class SystemMessage {
-  string type;
-  string message;
 }
 
 private varargs class SystemMessage constructMessageFromArgs(string type, mixed args...) {
@@ -364,6 +365,21 @@ varargs int _info(mixed args...) {
  */
 varargs int _question(mixed args...) {
   return _feedback("question", args...);
+}
+
+/**
+ * @def varargs int _debug(object tp, string str, mixed args...)
+ * @def varargs int _debug(string str, mixed args...)
+ * @description Provides a question message, optionally formatted with
+ *              arguments. If no object is provided, the message will be sent
+ *              to this_body(). If no object is found, the message will be
+ *              discarded.
+ * @param {string} str - The question message.
+ * @param {mixed} [args] - Optional arguments to format the message.
+ * @returns {int} - Always returns 1, unless there is no body object.
+ */
+varargs int _debug(mixed args...) {
+  return _feedback("debug", args...);
 }
 
 /**

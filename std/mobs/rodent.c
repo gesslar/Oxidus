@@ -12,6 +12,6 @@
 inherit __DIR__ "mammal";
 
 void monster_setup(mixed args...) {
-    ::monster_setup(args...);
-    set_race("rodent");
+  ::monster_setup(args...);
+  set_race("rodent");
 }

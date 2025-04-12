@@ -23,6 +23,7 @@ int force_me(string cmd);
 void add_wizard_paths();
 void remove_wizard_paths();
 void add_standard_paths();
+public string find_command_path(string verb);
 varargs int verb_hook(string arg, int debug_level);
 
 #endif // __COMMAND_H__

@@ -19,9 +19,7 @@ void setup() {
     ({"Load simul_efun object",(: load_object(SIMUL_OB) :)}),
     ({"Destruct master object",(: destruct(master()) :)}),
     ({"Destruct master/valid",(: destruct(find_object("/adm/obj/master/valid")) :)}),
-    ({"Destruct master/parse",(: destruct(find_object("/adm/obj/master/parse")) :)}),
     ({"Load master/valid",(: load_object("/adm/obj/master/valid") :)}),
-    ({"Load master/parse",(: load_object("/adm/obj/master/parse") :)}),
     ({"Load master object",(: load_object("/adm/obj/master") :)}),
     ({"Rehash system configuration",(: CONFIG_D->rehash_config() :)}),
   });

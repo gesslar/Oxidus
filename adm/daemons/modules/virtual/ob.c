@@ -22,14 +22,16 @@ public nomask object compile_object(string file) {
 
   parts = dir_file(file);
   obj_name = parts[1];
+
   // Remove the module extension
   sscanf(obj_name, "%s.%*s", obj_name);
-  obj_file = sprintf("/obj/%s/%s.txt", module, obj_name);
+
+  obj_file = sprintf("/obj/%s/%s.lpml", module, obj_name);
 
   if(file_size(obj_file) < 1)
     return 0;
 
-  e = catch(data = from_string(read_file(obj_file)));
+  e = catch(data = lpml_decode(read_file(obj_file)));
   if(e) {
     log_file("VIRTUAL", e);
     return 0;
@@ -46,9 +48,6 @@ public nomask object compile_object(string file) {
       obj->remove();
     return 0;
   }
-
-  if(objectp(obj))
-    obj->set_virtual_master(file);
 
   return obj;
 }
