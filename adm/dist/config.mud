@@ -16,14 +16,14 @@ external_port_1: telnet 1336
 #mud ip : 0.0.0.0
 
 # absolute pathname of mudlib
-mudlib directory : /path/to/mudlib/lib
+mudlib directory : /home/gesslar/Oxidus
 
 # debug.log and author/domain stats are stored here
-log directory : /path/to/mudlib/log
+log directory : /home/gesslar/Oxidus/log
 
 # the directories which are searched by #include <...>
 # for multiple dirs, separate each path with a ':'
-include directories : /include:/include/driver
+include directories : /include:/include/driver:/adm/include
 
 # the file which defines the master object
 master file : /adm/obj/master
