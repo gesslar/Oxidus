@@ -1,5 +1,5 @@
 ###############################################################################
-#                   gLPU Mudlib Runtime Configuation File                    #
+#                   Oxidus Mudlib Runtime Configuation File                   #
 ###############################################################################
 # NOTE: All paths specified here are relative to the mudlib directory except  #
 #       for mudlib directory and the log directory.                           #
@@ -7,7 +7,7 @@
 ###############################################################################
 
 # name of this mud
-name : gLPU
+name : Oxidus
 
 # port number to accept users on
 external_port_1: telnet 1336
@@ -165,10 +165,10 @@ wombles : 0
 # CALL_OTHER_TYPE_CHECK: enable type checking for call_other()
 # (-> operator on objects)
 #
-call other type check : 1
+call other type check : 0
 
 # CALL_OTHER_WARN, make it warning instead of errors
-call other warn : 1
+call other warn : 0
 
 # MUDLIB_ERROR_HANDLER: If you define this, the driver doesn't do any
 #   handling of runtime errors, other than to turn the heartbeats of

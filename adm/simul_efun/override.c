@@ -49,13 +49,13 @@ void set_privs(object ob, string privs) {
     efun::set_privs(ob, privs);
 }
 
-void write(string msg) {
-  error("Use tell.");
-}
+// void write(string msg) {
+//   error("Use tell.");
+// }
 
-varargs void say(string msg, mixed exclude) {
-  error("Use tell.");
-}
+// varargs void say(string msg, mixed exclude) {
+//   error("Use tell.");
+// }
 
 /**
  * @efun_override shout
@@ -65,9 +65,9 @@ varargs void say(string msg, mixed exclude) {
  * @param {mixed} exclude - The object or array of objects to exclude from
  *                          the message.
  */
-varargs void shout(string msg, mixed exclude) {
-  error("Use tell.");
-}
+// varargs void shout(string msg, mixed exclude) {
+//   error("Use tell.");
+// }
 
 /**
  * @efun_override tell_object
@@ -77,9 +77,9 @@ varargs void shout(string msg, mixed exclude) {
  * @param {string} msg - The message to write.
  * @param {string} type - The message class of message to write.
  */
-varargs void tell_object(mixed ob, mixed msg, mixed type) {
-  error("Use tell.");
-}
+// varargs void tell_object(mixed ob, mixed msg, mixed type) {
+//   error("Use tell.");
+// }
 
 /**
  * @efun_override tell_room
@@ -90,9 +90,9 @@ varargs void tell_object(mixed ob, mixed msg, mixed type) {
  * @param {mixed} exclude - The object or array of objects to exclude from
  *                          the message.
  */
-varargs void tell_room(mixed room, string msg, mixed exclude) {
-  error("Use tell.");
-}
+// varargs void tell_room(mixed room, string msg, mixed exclude) {
+//   error("Use tell.");
+// }
 
 /**
  * @efun_override userp
