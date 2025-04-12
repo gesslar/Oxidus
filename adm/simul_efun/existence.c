@@ -87,7 +87,9 @@ int ofile_exists(string file) {
  * }
  */
 int user_exists(string user) {
-  return file_exists(
-    "/data/users/" + user[0..0] + "/" + user + "/" + user + __SAVE_EXTENSION__
-  );
+  return stringp(ACCOUNT_D->character_account(user)) ||
+      file_exists(
+      "/data/users/" + user[0..0] + "/" + user + "/" + user + __SAVE_EXTENSION__
+     )
+  ;
 }

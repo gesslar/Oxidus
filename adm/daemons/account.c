@@ -276,6 +276,8 @@ int add_character(string account_name, string str) {
   accounts[account_name] = account;
   reverse[str] = account_name;
 
+  assure_dir(user_data_directory(str));
+
   save_data();
 
   return 1;
