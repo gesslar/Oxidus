@@ -60,6 +60,9 @@ void mudlib_setup() {
     set_pref("prompt", ">");
   set_log_level(0);
   set_prevent_get(1);
+  // TODO figure out how we were getting this twice and then
+  //      fix that and then remove remove_action() heres
+  remove_action("command_hook", "");
   add_action("command_hook", "", 1);
   set_ignore_mass(1);
 }

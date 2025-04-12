@@ -105,7 +105,6 @@ string *query_all_commands() {
   return commands();
 }
 
-
 /**
  * Finds all commands that share the same action handler.
  *
@@ -254,13 +253,14 @@ int command_hook(string arg) {
   string verb, err, *cmds = ({});
   string custom, tmp;
   object
-  /** @type {STD_PLAYER} @type {STD_NPC}*/ caller,
-  /** @type {STD_CMD} */ command,
-  /** @type {STD_ITEM} @type {STD_OBJECT} */ ob,
-  /** @type {STD_ITEM}* @type {STD_OBJECT}* */ *obs;
-  int i;
+  /** @type {STD_BODY}    */  caller,
+  /** @type {STD_CMD}     */  cmd,
+  /** @type {STD_ITEM}    */  ob,
+  /** @type {STD_ITEM}*   */ *obs;
+  int i, sz;
   mixed result;
   string complete;
+  mixed return_value;
 
   caller = this_body();
 
@@ -283,9 +283,11 @@ int command_hook(string arg) {
   else
     complete = verb;
 
-
-  // First let's check in our immediate inventory
   obs = all_inventory();
+  if(environment())
+    obs += ({ environment() }) + all_inventory(environment());
+  obs += ({ this_object() });
+
   foreach(ob in obs) {
     result = ob->evaluate_command(this_object(), verb, arg);
     result = evaluate_result(result);
@@ -293,26 +295,10 @@ int command_hook(string arg) {
       return 1;
   }
 
-  // Now let's check in our environment
-  if(environment()) {
-    obs = ({ environment() }) + all_inventory(environment()) - ({ this_object() });
-    foreach(ob in obs) {
-      result = ob->evaluate_command(this_object(), verb, arg);
-      result = evaluate_result(result);
-      if(result == 1)
-        return 1;
-    }
-  }
-
   if(arg)
     _command_history += ({ verb + " " + arg });
   else
     _command_history += ({ verb });
-
-  if(environment() && environment()->valid_exit(verb)) {
-    arg = verb;
-    verb = "go";
-  }
 
   // Communication checks
   catch {
@@ -325,35 +311,56 @@ int command_hook(string arg) {
         return 1;
   };
 
-  for(i = 0; i < sizeof(_path); i ++)
-    if(file_exists(_path[i] + verb + ".c"))
-      cmds += ({ _path[i] + verb });
+  cmds = map(_path, (: $1 + $(verb) + ".c" :));
+  cmds = filter(cmds, (: file_exists :));
 
-  if(sizeof(cmds) > 0) {
-    mixed return_value;
-
-    i = 0;
-    while(return_value <= 0 && i < sizeof(cmds)) {
-      err = catch(command = load_object(cmds[i]));
-
-      if(err) {
-        tell_me("Error: Command " + verb + " non-functional.\n");
-        tell_me(err);
-        i++;
-        continue;
-      }
-
-      return_value = command->main(caller, arg);
-      i++;
-      result = evaluate_result(return_value);
-      if(result == 1)
-        return 1;
+  sz = sizeof(cmds);
+  if(sz > 0) {
+    if(sz > 1) {
+      tell("Ambiguous command.\n");
+      return 1;
     }
+
+    if(environment() && environment()->valid_exit(verb)) {
+      arg = verb;
+      verb = "go";
+    }
+
+    err = catch(cmd = load_object(cmds[0]));
+
+    if(err) {
+      tell_me("Error: Command " + verb + " non-functional.\n");
+      tell_me(err);
+      return 1;
+    }
+
+    if(cmd->is_verb())
+      return_value = cmd->process_verb_rules(caller, arg || "");
+    else
+      return_value = cmd->main(caller, arg);
+
+    result = evaluate_result(return_value);
+    if(result == 1)
+      return 1;
 
     return return_value;
   }
 
   return 0;
+}
+
+public string find_command_path(string verb) {
+  string *paths = query_path();
+  string path;
+
+  foreach(string p in paths) {
+    if(file_exists(p + verb + ".c")) {
+      path = p + verb;
+      break;
+    }
+  }
+
+  return path;
 }
 
 private nomask int evaluate_result(mixed result) {
@@ -376,7 +383,6 @@ private nomask int evaluate_result(mixed result) {
 
   return result;
 }
-
 
 int force_me(string cmd) {
   if(

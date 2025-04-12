@@ -50,17 +50,17 @@ void virtual_setup(mixed args...) {
     //     set_material(data["material"]);
 
   // Set additional properties
-  if(!nullp(data["properties"]) && mapp(data["properties"]))
+  if(mapp(data["properties"]))
     foreach(string key, mixed value in data["properties"])
       loot_properties[key] = value;
 
   // Add additional IDs
-  if(!nullp(data["additional_ids"]) && pointerp(data["additional_ids"]))
-    foreach(string id in data["additional_ids"])
-      add_id(id);
+  if(pointerp(data["additional ids"]))
+    add_id(data["additional ids"]);
+
   // Set any custom functions or properties
-  if(!nullp(data["custom_setup"]) && valid_function(data["custom_setup"]))
-    (*data["custom_setup"])(this_object());
+  if(valid_function(data["custom setup"]))
+    (*data["custom setup"])(this_object());
 }
 
 mixed query_loot_property(string key) {

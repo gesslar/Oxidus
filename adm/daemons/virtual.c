@@ -40,6 +40,8 @@ public nomask object compile_object(string file) {
         return 0;
       }
 
+      result->set_virtual_master(base_name(file));
+
       return result;
     }
   }

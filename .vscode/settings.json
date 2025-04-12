@@ -17,13 +17,10 @@
   },
   "github.copilot.chat.codeGeneration.instructions": [
     {
-      "text": "If being asked to document functions, please use the conventions specified in the file."
-    },
-    {
       "file": ".vscode/LLM_Doc_Instructions_FluffOS.md"
     },
     {
-      "text": "Do not insert a space between keywords and parentheses."
+      "file": ".vscode/LLM Coding Style.md"
     }
   ],
   "[lpc]": {
@@ -43,6 +40,9 @@
         }
       }
     ]
+  },
+  "files.associations": {
+    "*.lpml": "yaml",
   },
   "files.insertFinalNewline": true,
   "files.trimFinalNewlines": true,

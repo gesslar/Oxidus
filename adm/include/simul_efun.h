@@ -107,6 +107,9 @@ string identify(mixed arg);
 mixed json_decode(string str);
 mapping json_encode(mixed arg);
 
+// File: lpml.c
+mixed lpml_decode(string text);
+
 // File: mapping.c
 string pretty_map(mapping map);
 
@@ -209,6 +212,8 @@ string reverse_string(string str);
 string reverse_strsrch(string str, string sub, int start);
 varargs int pcre_strsrch(string str, string pattern, int start);
 int colourp(string str);
+string all_caps(string str);
+int is_numeric(string str);
 
 // File: system.c
 int port();

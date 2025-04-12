@@ -28,7 +28,5 @@ public nomask object compile_object(string file) {
     return 0;
   }
 
-  ob->set_virtual_master(STD_GHOST);
-
   return ob;
 }

@@ -36,7 +36,5 @@ public nomask object compile_object(string file) {
   if(!ob)
     return 0;
 
-  ob->set_virtual_master(base_name(ob));
-
   return ob;
 }

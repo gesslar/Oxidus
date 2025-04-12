@@ -12,5 +12,5 @@
 inherit __DIR__ "monster";
 
 void monster_setup(mixed args...) {
-    set_race("mammal");
+  set_race("mammal");
 }

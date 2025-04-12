@@ -33,7 +33,8 @@ journal.*
 # Customised configuration files
 /adm/etc/config.json
 /adm/etc/mssp.json
-# lpc-config.json
+/adm/etc/config.lpml
+/adm/etc/mssp.lpml
 .vscode/keybindings.json
 .vscode/tasks.json
 
@@ -44,4 +45,3 @@ adm/etc/alarms/*.txt
 /adm/dist/bin/
 /adm/dist/run.log
 /include/driver/
-/fluffos_parser

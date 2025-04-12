@@ -530,3 +530,28 @@ string all_caps(string str) {
 
   return str;
 }
+
+/**
+ * Checks if `str` is a numeric literal (integer or float). It can optionally
+ * start with '-' for negatives. Uses a regex to confirm the format.
+ *
+ * @param {string} str The string to check
+ * @return {int} 1 if it matches a numeric pattern, 0 otherwise
+ *
+ * @example
+ * ```c
+ * if(is_numeric("3")) {
+ *   write("It's a number.\n");
+ * }
+ *
+ * if(is_numeric("3.14159", 1)) {
+ *   write("It's a number.\n");
+ * }
+ * ```
+ */
+varargs int is_numeric(string str, int allow_float: (: 0 :)) {
+  if(allow_float)
+    return pcre_match(str, "^-?\\d+(\\.\\d+)?$");
+  else
+    return pcre_match(str, "^-?\\d+$");
+}
