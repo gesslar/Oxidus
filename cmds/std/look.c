@@ -229,7 +229,7 @@ mixed render_object(object tp, object room, string target) {
 mixed render_living(object tp, object room, object target, int brief) {
   string temp, result = "";
   string name;
-  mapping equipment;
+  mapping equipment, wielded;
   object ob;
   string slot;
   string race, gender, hair, eyes;
@@ -307,14 +307,20 @@ mixed render_living(object tp, object room, object target, int brief) {
     if(devp(tp) && tp->query_pref("look_filename") == "all")
       result = "{{0066CC}}"+prepend(file_name(target), "/") + "{{res}}\n" + result;
 
+  wielded = target->query_wielded();
   equipment = target->query_equipped();
-  if(sizeof(equipment)) {
-    string *slots = keys(equipment);
+  if(sizeof(equipment) || sizeof(wielded)) {
+    string *slots = keys(wielded) + keys(equipment);
     int max = max(map(slots, (: strlen :)));
 
     result += "\n";
-    foreach(slot, ob in equipment)
+    foreach(slot in slots) {
+      ob = wielded[slot] || equipment[slot];
+      if(!ob)
+        continue;
+
       result += sprintf("%*s : %s\n", max, capitalize(slot), get_short(ob, 1));
+    }
   }
 
   tell(tp, result);
