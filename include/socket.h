@@ -22,5 +22,7 @@
 
 #define SO_TLS_VERIFY_PEER 1
 #define SO_TLS_SNI_HOSTNAME 2
+#define SO_TLS_CERT 3
+#define SO_TLS_KEY 4
 
 #endif // __SOCKET_H__

@@ -146,9 +146,11 @@ For objects of specific types:
 
 ```c
 {"/path/to/object.c"}
+{STD_PLAYER}
 ```
 
 Example: `{"/std/player.c"}`
+         `{STD_PLAYER}`
 
 ### Arrays
 

@@ -14,13 +14,13 @@ void setup() {
   set_log_level(4);
   set_log_prefix("(TEST SERVER)");
 
-  if(!set_listen_port(8081))
+  if(!set_listen_port(6969))
     return;
 
   set_option("deflate", 1);
   // tls on a server will crash your driver. 2024-07-05
   // https://github.com/fluffos/fluffos/issues/1072
-  set_option("tls", 0);
+  set_option("tls", 1);
 
   start_server();
 }

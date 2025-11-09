@@ -1,0 +1,5 @@
+{
+  "scripts": {
+    "pr": "gt submit -p -m --ai"
+  }
+}
