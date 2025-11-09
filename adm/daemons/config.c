@@ -35,8 +35,8 @@ private nosave mapping config = ([ ]);
  * Sets the daemon to persist and loads the initial configuration.
  */
 void setup() {
-    set_no_clean(1);
-    rehash_config();
+  set_no_clean(1);
+  rehash_config();
 }
 
 /**
@@ -47,16 +47,16 @@ void setup() {
  * @errors If config is null, key is missing, or key is invalid
  */
 public mixed get_mud_config(string key) {
-    if(nullp(config))
-        error("get_mud_config: No configuration found.");
+  if(nullp(config))
+    error("get_mud_config: No configuration found.");
 
-    if(!key)
-        error("get_mud_config: Missing key.");
+  if(!key)
+    error("get_mud_config: Missing key.");
 
-    if(nullp(config[key]))
-        error("get_mud_config: Invalid key: " + key + ".");
+  if(nullp(config[key]))
+    error("get_mud_config: Invalid key: " + key + ".");
 
-    return config[key];
+  return config[key];
 }
 
 /**
@@ -69,21 +69,21 @@ public mixed get_mud_config(string key) {
  * Later values override earlier ones for the same keys.
  */
 public void rehash_config() {
-    mapping temp;
+  mapping temp;
 
-    if(file_exists(DEFAULT_CONFIG)) {
-        temp = json_decode(read_file(DEFAULT_CONFIG));
-        if(mapp(temp)) {
-            config += temp;
-        }
-    }
+  if(file_exists(DEFAULT_CONFIG)) {
+    temp = json_decode(read_file(DEFAULT_CONFIG));
 
-    if(file_exists(CONFIG_FILE)) {
-        temp = json_decode(read_file(CONFIG_FILE));
-        if(mapp(temp)) {
-            config += temp;
-        }
-    }
+    if(mapp(temp))
+      config += temp;
+  }
+
+  if(file_exists(CONFIG_FILE)) {
+    temp = json_decode(read_file(CONFIG_FILE));
+
+    if(mapp(temp))
+      config += temp;
+  }
 }
 
 /**
@@ -92,5 +92,5 @@ public void rehash_config() {
  * @returns {mapping} A copy of the current configuration
  */
 mapping get_all_config() {
-    return copy(config);
+  return copy(config);
 }

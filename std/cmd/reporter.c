@@ -130,5 +130,4 @@ public nomask void finish_github(mapping status, object user) {
     tell(user, "Report submitted to GitHub.\n");
   else
     tell(user, "Error submitting report to GitHub.\n");
-
 }
