@@ -7,6 +7,9 @@ log
 !/log/*/.keep
 #/doc/autodoc/
 
+/adm/etc/certs/*
+!/adm/etc/certs/*/.keep
+
 /home/*
 !/home/*/.keep
 
