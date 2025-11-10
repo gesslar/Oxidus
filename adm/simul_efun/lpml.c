@@ -347,11 +347,11 @@ private mixed lpml_decode_parse_object(mixed* parse) {
       // Could be identifier or start of spacey key
       // Parse as identifier first
       key = lpml_decode_parse_identifier(parse);
-      
+
       // Check if next non-whitespace is ':' or if there's more (spacey key)
       lpml_decode_skip_whitespace_and_comments(parse);
       ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
-      
+
       if(ch != ':') {
         // Not a simple identifier - must be a spacey key
         // We already parsed part of it, so read the rest
