@@ -1,12 +1,16 @@
-id: pork
-additional ids: [meat, chunk]
-adj: [raw, fresh]
-name: raw pork
-short: a chunk of raw pork
-long: >-
-  This is a fresh chunk of raw pork from a wild boar. It needs to be cooked
-  before eating.
-mass: 30
-value: 40
-uses: 1
-properties: {food: yes, raw: yes}
+{
+  id: ["pork"],
+  additional ids: ["meat", "chunk"],
+  adj: ["raw", "fresh"],
+  name: "raw pork",
+  short: "a chunk of raw pork",
+  long: "This is a fresh chunk of raw pork from a wild boar. It needs to be "
+        "cooked before eating.",
+  mass: 30,
+  value: 40,
+  uses: 1,
+  properties: {
+    food: true,
+    raw: true,
+  },
+}

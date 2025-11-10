@@ -1,639 +1,1058 @@
-#include <simul_efun.h>
-
 /**
- * @file /adm/simul_efun/lpml.c
+ * lpml.c (LPML implementation)
  *
- * YAML-flavoured parser and decoder for LPC. Provides functionality to parse
- * LPML format into LPC data structures (mappings and arrays).
+ * LPML (LPC Markup Language) - A human-friendly config format for MUDs
+ * Based on JSON5 with LPC-specific extensions
  *
- * @created 2025-04-06 - Gesslar
- * @last_modified 2025-04-06 - Gesslar
+ * Features supported:
+ * - Single and multi-line comments (// and \/* *\/)
+ * - Unquoted object keys (identifiers)
+ * - Single-quoted strings ('string')
+ * - Multiline strings with automatic folding (real newlines → spaces)
+ * - String concatenation: adjacent strings auto-join with smart spacing
+ * - Trailing commas in objects and arrays
+ * - Hexadecimal numbers (0xFF)
+ * - Leading/trailing decimal points (.5, 5.)
+ * - Plus sign on numbers (+5)
+ * - Infinity and NaN
+ * - File includes with "#path" syntax (use \# to escape literal #)
  *
- * @history
- * 2025-04-06 - Gesslar - Created
+ * mixed lpml_decode(string text, string base_path)
+ *     Deserializes LPML into an LPC value.
+ *     base_path is optional, used for resolving relative includes.
+ *
+ * string lpml_encode(mixed value)
+ *     Serializes an LPC value into JSON text.
+ *
+ * @created 2025-11-09 - Gesslar
+ * @version 1.0.0
+ * @see /doc/lpml-spec.md for full specification
  */
 
-#define LP_SEQ_ELEMENT          "LP_SEQ_ELEMENT"
-#define LP_BLOCK_START          "LP_BLOCK_START"
-#define LP_KV_PAIR              "LP_KV_PAIR"
-#define LP_COMMENT              "LP_COMMENT"
-#define LP_BLANK                "LP_BLANK"
-#define LP_MULTILINE_JOIN       "LP_MULTILINE_JOIN"
-#define LP_MULTILINE_PRESERVE   "LP_MULTILINE_PRESERVE"
-#define LP_MERGE_START          "LP_MERGE_START"
-#define LP_MERGE_INLINE         "LP_MERGE_INLINE"
-#define LP_UNKNOWN              "LP_UNKNOWN"
+#ifndef __STD_LPML_H
+#define __STD_LPML_H
 
-#define LP_ML_STRIP             "-"
-#define LP_ML_KEEP              "+"
-#define LP_ML_CLIP              ([])[0]
+#define to_string(x)                ("\\" + (x))
 
-#define PAGE_TITLE  0
-#define PAGE_SOURCE 1
-#define PAGE_RESULT 2
+#define LPML_DECODE_PARSE_TEXT      0
+#define LPML_DECODE_PARSE_POS       1
+#define LPML_DECODE_PARSE_LINE      2
+#define LPML_DECODE_PARSE_CHAR      3
+#define LPML_DECODE_PARSE_FIELDS    4
 
-private mixed *detect_line_type(string line);
-private int first_non_space(string text);
-varargs private mixed *parse_block(string *lines, mixed *pages, int curr_indent, int indent);
-private mixed lpml_parse_scalar(string val, mixed *pages);
-private string remove_inline_comment(string line);
-private mixed lpml_inherit(string text, mixed *pages);
-private mixed *paginate_document(string text);
-private string multiline_chomp(string text, string kind, string mode);
+private mixed lpml_decode_parse_value(mixed* parse);
+private varargs mixed lpml_decode_parse_string(mixed* parse, int quote_char);
+private string lpml_decode_parse_identifier(mixed* parse);
+private string lpml_decode_parse_spacey_key(mixed* parse);
 
-/**
- * Decodes a LPML string into LPC data structures.
- *
- * This function serves as the main entry point for LPML parsing, converting
- * a LPML formatted string into corresponding LPC mappings and arrays.
- *
- * @public
- * @param {string} text - The LPML text to decode
- * @returns {mixed} The parsed LPC data structure (mapping or array)
- * @example
- * mapping data = lpml_decode("key: value\nlist:\n  - item1\n  - item2");
- */
-public mixed lpml_decode(string text) {
-  mixed *pages = paginate_document(text);
-  int i, sz;
+// If at or below the relative path. We do not do multi-cross-traversal.
+// examples:
+//
+// good: ./file.txt
+//       ./subdir/file.txt
+//       ../file.txt
+//       ../../somedir/file.txt
+// bad:  ./../what/no.txt
+//       ../.././stop/it.c
+private string resolve_relative_path(string relative_path, string relative_to) {
+  string *relative_path_parts;
+  string *relative_to_parts;
 
-  for(i = 0, sz = sizeof(pages); i< sz; i++) {
-    mixed  *page;
-    string *lines;
-    string *page_result;
+  // If we don't have a valid string, the relative path is absolute, or
+  // we don't even have enough to work with, yeet it back. Similar tests
+  // for the relative_to.
+  if(!stringp(relative_path) ||
+     !strlen(relative_path) ||
+     relative_path[0] == '/' ||
 
-    page = pages[i];
+     !stringp(relative_to) ||
+     !strlen(relative_to ||
+     relative_to[0] != '/'))
 
-    // We need to always include a leading line feed, because
-    // explode removes the first one, if present. Don't worry
-    // about it. 😏
-    lines = explode("\n"+page[PAGE_SOURCE], "\n");
-    page_result = parse_block(lines, pages, 0)[0];
+    return relative_path;
 
-    pages[i][PAGE_RESULT] = page_result;
-  }
+  relative_path_parts = explode(relative_path, "/");
+  relative_path_parts = map(relative_path_parts, (: trim :));
+  relative_path_parts = filter(relative_path_parts, (: strlen :));
 
-  return pages[<1][PAGE_RESULT];
-}
+  relative_to_parts = explode(relative_to, "/");
+  relative_to_parts = map(relative_to_parts, (: trim :));
+  relative_to_parts = filter(relative_to_parts, (: strlen :));
 
-/**
- * Divides a LPML document into pages based on document separators.
- *
- * Pages in LPML are separated by "---" on a line by itself. Each page can
- * optionally have a title prefixed with "#@" on the first line. This function
- * splits the document into pages and prepares them for parsing.
- *
- * @private
- * @param {string} text - The complete LPML document text
- * @returns {mixed*} An array of page data, each containing title, source, and result
- */
-private mixed *paginate_document(string text) {
-  string *pages;
-  mixed *result;
-  int i, sz;
+  if(relative_path_parts[0] == "..") {
+    while(relative_path_parts[0] == "..") {
 
-  pages = explode(text, "---\n");
-  sz = sizeof(pages);
-  result = allocate(sz);
+      if(!sizeof(relative_to_parts))
+        error(
+          "Invalid path relative resolution to '"+relative_path+"' "
+          "from '"+relative_to+"'"
+        );
 
-  for(; i < sz; i++) {
-    string page = pages[i];
-    int first_eol;
-    string page_title;
-
-    // Append a newline to the end of the page if it doesn't already have one.
-    page = page[<1] == '\n' ? page : page + "\n";
-
-    first_eol = strsrch(page, "\n");
-    if(sscanf(page[0..first_eol-1], "#@%s", page_title) == 1) {
-      page = page[first_eol+1..];
-    } else {
-      page_title = sprintf("%d", i);
+      relative_path_parts = ({relative_to_parts[<1]}) + relative_path_parts;
+      relative_to_parts = relative_to_parts[0..<2];
     }
 
-    result[i] = ({ page_title, page, ([])[0] });
+    return sprintf("/%s/%s",
+      implode(relative_to_parts, "/"),
+      implode(relative_path_parts, "/")
+    );
   }
 
-  return result;
+  if(relative_path_parts[0] == ".")
+    relative_path_parts = relative_path_parts[1..];
+
+  return sprintf("/%s/%s",
+    implode(relative_to_parts, "/"),
+    implode(relative_path_parts, "/")
+  );
 }
 
 /**
- * Analyzes a line of LPML text to determine its type and structure.
- *
- * This function examines a line of LPML and identifies what kind of construct it
- * represents (e.g., sequence element, key-value pair, comment, etc.). It returns
- * an array containing the line type and any relevant extracted values.
- *
- * @private
- * @param {string} line - The line of LPML text to analyze
- * @param {int} indent - The current indentation level
- * @returns {mixed*} An array where the first element is the line type constant
- *                  and subsequent elements contain extracted values if applicable
+ * Advances the parse position by one character.
  */
-private mixed *detect_line_type(string line) {
-  string key, val, item;
-
-  line = ltrim(line);
-
-  if(line == "")
-    return ({ LP_BLANK });
-
-  // Return comment type for empty lines or lines starting with #
-  if(pcre_match(line, "^\\s*#"))
-    return ({ LP_COMMENT });
-
-  // Handle merge directives for inheritance/composition
-  if(sscanf(line, "- <<: %s", item) == 1)
-    return ({ LP_MERGE_INLINE, item });
-  if(sscanf(line, "<<: %s", item) == 1)
-    return ({ LP_MERGE_INLINE, item });
-  if(pcre_match(line, "^(?:(- )?)<<:$"))
-    return ({ LP_MERGE_START });
-
-  // Handle sequence elements (list items starting with -)
-  if(sscanf(line, "- %s", item) == 1)
-    return ({ LP_SEQ_ELEMENT, item });
-
-  { // Multiline string modes block
-    string mode;
-
-    // Check for preserved multiline (|) or folded multiline (>)
-    // Optional chomping indicators can follow (-, +, or none/clip)
-    if(sscanf(line, "%s: |%s", key, mode) >= 1)
-      return ({ LP_MULTILINE_PRESERVE, key, mode });
-
-    if(sscanf(line, "%s: >%s", key, mode) >= 1)
-      return ({ LP_MULTILINE_JOIN, key, mode });
-  }
-
-  // Standard key-value pairs (key: value)
-  if(sscanf(line, "%s: %s", key, val) == 2)
-    return ({ LP_KV_PAIR, key, val });
-
-  // Block scalar indicators (key: followed by indented block)
-  if(sscanf(line, "%s:", key) == 1)
-    return ({ LP_BLOCK_START, key });
-
-  // Anything not matching above patterns is considered unknown
-  return ({ LP_UNKNOWN, line });
+private void lpml_decode_parse_next_char(mixed* parse) {
+    parse[LPML_DECODE_PARSE_POS]++;
+    parse[LPML_DECODE_PARSE_CHAR]++;
 }
 
 /**
- * Finds the position of the first non-space character in a string.
- *
- * @private
- * @param {string} text - The string to examine
- * @returns {int} The position of the first non-space character, or
- *               the length of the string if it contains only spaces
+ * Advances the parse position by the specified number of characters.
  */
-private int first_non_space(string text) {
-  int x, len = strlen(text);
-
-  while(text[x++] == ' ' && x < len);
-
-  return x - 1;
-}
-
-private int find_next_line(string *lines, int curr) {
-  int sz = sizeof(lines);
-
-  while(++curr < sz) {
-    string *line_info = detect_line_type(lines[curr]);
-    // printf("Testing line %d of %d: %O\n", curr, sz, lines[curr]);
-    if(line_info[0] != LP_BLANK && line_info[0] != LP_COMMENT)
-      return curr;
-  }
-
-  return curr;
+private void lpml_decode_parse_next_chars(mixed* parse, int num) {
+    parse[LPML_DECODE_PARSE_POS] += num;
+    parse[LPML_DECODE_PARSE_CHAR] += num;
 }
 
 /**
- * Recursively parses a block of LPML text into LPC data structures.
- *
- * This function processes multiple lines of LPML text, handling indentation
- * and nested structures to build the appropriate LPC data structures.
- *
- * @param {string*} lines - Array of LPML text lines to parse
- * @param {int} curr_indent - The current indentation level
- * @param {int} [indent=0] - The indentation step size
- * @returns {mixed*} An array containing the parsed result and the number of lines processed
- * @private
+ * Advances the parse position to the next line.
  */
-// Recursive block parsing - this is the heart of the LPML parser
-varargs private mixed *parse_block(string *lines, mixed *pages, int curr_indent, int indent) {
-  int curr;
-  int sz = sizeof(lines);
-  mixed result;
-  string line, *line_info, line_type;
+private void lpml_decode_parse_next_line(mixed* parse) {
+    parse[LPML_DECODE_PARSE_POS]++;
+    parse[LPML_DECODE_PARSE_LINE]++;
+    parse[LPML_DECODE_PARSE_CHAR] = 1;
+}
 
-  if(!sz)
-    return ({ ([]), 0 });
+/**
+ * Skips whitespace and comments
+ */
+private void lpml_decode_skip_whitespace_and_comments(mixed* parse) {
+  int ch, next_ch;
 
-  // Find the first non-comment line, we use -1 to start from the beginning
-  // printf("Lines 0 = %O\n", lines[0]);
-  curr = find_next_line(lines, -1);
-  // printf("\n[[  Next line number = %d  ]]\n\n", curr);
-  if(curr >= sz)
-    return ({ ([]), 0 });
+  while(parse[LPML_DECODE_PARSE_POS] < sizeof(parse[LPML_DECODE_PARSE_TEXT])) {
+    ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
 
-  // We need to determine the shape of our block. These will get overwritten during
-  // the loop.
-  line = lines[curr];
-  line_info = detect_line_type(line);
-
-  // If it's a block, initialize the result as a mapping
-  if(line_info[0] == LP_BLOCK_START)
-    result = ([]);
-  // If it's a sequence element, initialize as an array
-  else if(line_info[0] == LP_SEQ_ELEMENT)
-    result = ({});
-  // For now, at least, let's just be an error. We will
-  // update this later to allow primitives. Maybe. Somehow.
-  else
-    // error("Invalid block type: " + line_info[0]);
-    result = ([]);
-
-  do {
-    int line_indent;
-    string key;
-    mixed value;
-
-    // printf("Line %d = %s\n", curr, lines[curr]);
-
-    line = lines[curr];
-    line = rtrim(remove_inline_comment(line));
-    line_info = detect_line_type(line);
-    line_type = line_info[0];
-    key = line_info[1];
-    line_indent = first_non_space(line);
-
-    // printf("Parsing block at line %d: %s\n", curr, line_info[0]);
-    // printf("Current line: %s\n", line);
-
-    // End of block - return the accumulated result
-    // printf("Comparing indentation: detected %d < passed %d\n", line_indent, indent);
-    if(line_indent < indent) {
-      // printf("New block at line %d\n", curr);
-      // printf("%O\n", ({ result, curr }));
-      break;
-      // return ({ result, curr });
-    } else if(line_indent > indent) {
-      // printf("Indentation increased at line %d from %d to %d\n", curr, indent, line_indent);
-      curr_indent++;
-      indent = line_indent;
+    // Whitespace
+    if(ch == ' ' || ch == '\t' || ch == '\r') {
+      lpml_decode_parse_next_char(parse);
+      continue;
     }
 
-    switch(line_type) {
-      case LP_BLOCK_START: {
-        mixed *sub;
+    if(ch == '\n' || ch == 0x0c) {
+      lpml_decode_parse_next_line(parse);
+      continue;
+    }
 
-        // printf("\n");
-        // printf("Key %O leads to line: %O\n", key, lines[curr+1]);
-        sub = parse_block(lines[curr+1..], pages, curr_indent, line_indent);
-        // printf("Result from parse_block = %O\n", sub);
-        value = sub[0];
-        curr += sub[1];
-        // printf("We ended key %O at line %d\n", key, sub[1]);
+    // Comments
+    if(ch == '/') {
+      next_ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS] + 1];
 
-        // printf("Adding to key %O`: %O\n", key, json_encode(value));
-
-        result[key] = value;
-        break;
-      }
-
-      // Complex parsing logic for handling merge directives
-      case LP_MERGE_START: {
-        // Tracks lines in the current merge block for processing
-        string *merge_lines = ({});
-
-        // Process each line that's more indented than current level
-        while(++curr < sz && first_non_space(lines[curr]) > indent) {
-          string val;
-          mixed merge_result;
-
-          // Only process lines that start with "- " (list items)
-          if(sscanf(trim(lines[curr]), "- %s", val) != 1)
-            continue;
-
-          merge_result = lpml_inherit(val, pages);
-
-          // Handle type coercion based on context:
-          // Array + Array = Concatenate arrays
-          // Array + Non-Array = Append non-array as element
-          // Otherwise = Combine mappings
-          if(typeof(result) == T_ARRAY && typeof(merge_result) == T_ARRAY) {
-            result += merge_result;
-          } else if(typeof(result) == T_ARRAY && typeof(merge_result) != T_ARRAY) {
-            result += ({ merge_result });
-          } else {
-            result += merge_result;
-          }
+      // Single-line comment
+      if(next_ch == '/') {
+        while(parse[LPML_DECODE_PARSE_POS] < sizeof(parse[LPML_DECODE_PARSE_TEXT]) &&
+              parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]] != '\n') {
+          lpml_decode_parse_next_char(parse);
         }
-
-        break;
+        continue;
       }
 
-      case LP_MERGE_INLINE: {
-        mixed pre;
+      // Multi-line comment
+      if(next_ch == '*') {
+        lpml_decode_parse_next_char(parse);  // Skip /
+        lpml_decode_parse_next_char(parse);  // Skip *
 
-        pre = lpml_parse_scalar(line_info[1], pages);
+        while(parse[LPML_DECODE_PARSE_POS] + 1 < sizeof(parse[LPML_DECODE_PARSE_TEXT])) {
+          ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+          next_ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS] + 1];
 
-        if(!stringp(pre) && !pointerp(pre))
-          error("Invalid merge inline value: " + pre);
-
-        if(stringp(pre))
-          pre = ({ pre });
-
-        foreach(string inc in pre) {
-          mixed merge_result;
-
-          if(!stringp(inc))
-            error("Invalid merge inline value: " + inc);
-
-          merge_result = lpml_inherit(inc, pages);
-          if(typeof(result) == T_ARRAY && typeof(merge_result) == T_ARRAY) {
-            result += merge_result;
-          } else if(typeof(result) == T_ARRAY && typeof(merge_result) != T_ARRAY) {
-            result += ({ merge_result });
-          } else {
-            result += merge_result;
-          }
-        }
-
-        break;
-      }
-
-      case LP_SEQ_ELEMENT: {
-        // We might have another array here, so, let's see!
-        string trimmed = ltrim(line);
-        mixed *subdetected = detect_line_type(trimmed[2..]);
-        string item_type = subdetected[0];
-        string item = subdetected[1];
-        mixed *sub;
-
-        if(item_type == LP_SEQ_ELEMENT) {
-          string *seq_lines = ({ trimmed[2..] });
-          int i = curr + 1;
-
-          while(i < sz && first_non_space(lines[i]) > indent) {
-            seq_lines += ({ trim(lines[i]) });
-            i++;
-          }
-
-          sub = parse_block(seq_lines, pages, curr_indent, indent);
-          value = sub[0];
-          curr += sub[1];
-        } else {
-          value = lpml_parse_scalar(item, pages);
-        }
-
-        result += ({ value });
-
-        break;
-      }
-
-      // Handle key-value pairs (key: value)
-      case LP_KV_PAIR: {
-        string block;
-        string val = line_info[2];
-
-        if(undefinedp(val) || val == "") {
-          mixed* sub = parse_block(lines[curr + 1..], pages, curr_indent, indent);
-          value = sub[0];
-          curr += sub[1];
-        } else {
-          value = lpml_parse_scalar(val, pages);
-        }
-
-        result[key] = value;
-        break;
-      }
-
-      case LP_MULTILINE_JOIN:
-      case LP_MULTILINE_PRESERVE: {
-        string block = "";
-        string mode = line_info[2];
-        string chunk;
-        string *inner_info;
-        string chunk_type;
-        int i = curr + 1;
-
-        do {
-          line = lines[i];
-          chunk = ltrim(line, " ");
-          inner_info = detect_line_type(chunk);
-          chunk_type = inner_info[0];
-
-          // printf("> Chunk type is [%s]: %O\n", chunk_type, chunk);
-
-          if(chunk_type == LP_BLANK ||
-             chunk_type == LP_COMMENT ||
-             chunk_type == LP_UNKNOWN) {
-            if(line_type == LP_MULTILINE_PRESERVE) {
-              chunk += "\n";
-            } else {
-              if(chunk_type == LP_BLANK) {
-                chunk += " ";
-              }
-            }
-          } else {
+          if(ch == '*' && next_ch == '/') {
+            lpml_decode_parse_next_char(parse);  // Skip *
+            lpml_decode_parse_next_char(parse);  // Skip /
             break;
           }
 
-          block += chunk, i++;
-        } while(i < sz && first_non_space(lines[i]) > indent);
+          if(ch == '\n') {
+            lpml_decode_parse_next_line(parse);
+          } else {
+            lpml_decode_parse_next_char(parse);
+          }
+        }
 
-        // Trim leading blank lines only if mode isn't KEEP
-        if(mode != LP_ML_KEEP)
-          block = ltrim(block, "\n");
-
-        result[key] = multiline_chomp(block, line_type, mode);
-
-        break;
+        continue;
       }
     }
-  } while((curr = find_next_line(lines, curr)) < sz);
 
-  // printf("@@@ Returning at line [%2d] of [%2d] - %O\n", curr, sz, curr == sz ? "DONE" : lines[curr]);
-  // printf("@@@ %O\n", ({ result, curr }));
-  return ({ result, curr });
+    // Not whitespace or comment
+    break;
+  }
 }
 
 /**
- * Processes multiline text according to specified chomping rules.
- *
- * This function handles LPML's multiline string handling, applying chomping
- * (trailing whitespace handling) based on the provided mode:
- * - STRIP (-): Remove all trailing whitespace
- * - KEEP (+): Keep all trailing whitespace and add a newline
- * - CLIP (default): Context-dependent handling based on kind
- *
- * @private
- * @param {string} text - The multiline text to process
- * @param {string} kind - The multiline mode (LP_MULTILINE_JOIN or LP_MULTILINE_PRESERVE)
- * @param {string} mode - The chomping mode (LP_ML_STRIP, LP_ML_KEEP, or LP_ML_CLIP)
- * @returns {string} The processed multiline text with appropriate chomping applied
+ * Converts a hexadecimal character to its integer value.
  */
-private string multiline_chomp(string text, string kind, string mode) {
-  // For joined multiline (>), handle chomping modes:
-  // STRIP (-): Remove all trailing whitespace
-  // KEEP (+): Keep all whitespace and add newline
-  // CLIP (default): Remove trailing space but keep one newline
-  if(kind == LP_MULTILINE_JOIN)
-    text =   (mode == LP_ML_STRIP) ? rtrim(text)
-           : (mode == LP_ML_KEEP)  ? text + "\n"
-           : rtrim(text) + "\n"; // default LP_ML_CLIP
-
-  // For preserved multiline (|), handle chomping modes:
-  // STRIP (-): Remove all trailing newlines
-  // KEEP (+): Keep all newlines and add one more
-  // CLIP (default): Keep existing newlines as is
-  if(kind == LP_MULTILINE_PRESERVE)
-    text =   (mode == LP_ML_STRIP) ? rtrim(text, "\n")
-           : (mode == LP_ML_KEEP)  ? text + "\n"
-           : text; // default LP_ML_CLIP
-
-  return text;
+private int lpml_decode_hexdigit(int ch) {
+  if(ch >= '0' && ch <= '9') return ch - '0';
+  if(ch >= 'a' && ch <= 'f') return ch - 'a' + 10;
+  if(ch >= 'A' && ch <= 'F') return ch - 'A' + 10;
+  return -1;
 }
 
 /**
- * Parses a LPML scalar value into its appropriate LPC type.
- *
- * This function handles conversion of LPML scalar values into appropriate
- * LPC data types, including numbers, booleans, strings, null values, and
- * inline arrays/mappings.
- *
- * @param {string} val - The LPML scalar value to parse
- * @returns {mixed} The parsed LPC representation of the scalar
- * @private
+ * Checks if the parse position matches the specified token.
  */
-// Handle inline arrays and mappings in scalar values
-private mixed lpml_parse_scalar(string val, mixed *pages) {
-  // Type conversion variables
-  int intval;
-  float fval;
+private varargs int lpml_decode_parse_at_token(mixed* parse, string token, int start) {
+  int i, j;
 
-  // Process inline array notation [item1, item2, ...]
-  if(val[0] == '[' && val[<1] == ']') {
-    // Transform each item into a sequence element for consistent parsing
-    string* parts = map(explode(val[1..<2], ","), (: trim($1) :));
-    string* seq_lines = map(parts, (: "- " + $1 :));  // Convert to LPML sequence format
+  for(i = start, j = strlen(token); i < j; i++)
+    if(parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS] + i] != token[i])
+      return 0;
 
-    return parse_block(seq_lines, pages, 0, 0)[0];
+  return 1;
+}
+
+/**
+ * Raises a parse error with the specified message and character.
+ */
+private varargs void lpml_decode_parse_error(mixed* parse, string msg, int ch) {
+  if(!nullp(ch))
+    msg = sprintf("%s, '%c'", msg, ch);
+
+  msg = sprintf("%s @ line %d char %d\n'%s'\n",
+    msg,
+    parse[LPML_DECODE_PARSE_LINE],
+    parse[LPML_DECODE_PARSE_CHAR],
+    string_decode(parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]..parse[LPML_DECODE_PARSE_POS]+20], "utf8")
+  );
+
+  error(msg);
+}
+
+/**
+ * Check if character is valid identifier start (letter, $, _)
+ */
+private int lpml_is_identifier_start(int ch) {
+  return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_' || ch == '$';
+}
+
+/**
+ * Check if character is valid identifier continuation (letter, digit, $, _)
+ */
+private int lpml_is_identifier_char(int ch) {
+  return lpml_is_identifier_start(ch) || (ch >= '0' && ch <= '9');
+}
+
+/**
+ * Parse an identifier (unquoted key)
+ */
+private string lpml_decode_parse_identifier(mixed* parse) {
+  int from, to;
+  string out;
+
+  from = parse[LPML_DECODE_PARSE_POS];
+
+  if(!lpml_is_identifier_start(parse[LPML_DECODE_PARSE_TEXT][from]))
+    lpml_decode_parse_error(parse, "Invalid identifier start");
+
+  lpml_decode_parse_next_char(parse);
+
+  while(parse[LPML_DECODE_PARSE_POS] < sizeof(parse[LPML_DECODE_PARSE_TEXT]) &&
+        lpml_is_identifier_char(parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]])) {
+    lpml_decode_parse_next_char(parse);
   }
 
-  // Handle inline mapping notation {key1: val1, key2: val2, ...}
-  // Directly constructs a mapping from the inline format
-  if(val[0] == '{' && val[<1] == '}') {
-    mapping result = ([]);
-    string* pairs = explode(val[1..<2], ",");
-    foreach(string pair in pairs) {
-      string k, v;
-      if(sscanf(trim(pair), "%s:%s", k, v) == 2)
-        result[trim(k)] = lpml_parse_scalar(trim(v), pages);
+  to = parse[LPML_DECODE_PARSE_POS] - 1;
+  out = string_decode(parse[LPML_DECODE_PARSE_TEXT][from .. to], "utf-8");
+
+  return out;
+}
+
+/**
+ * Parse a YAML-style spacey key (reads until ':')
+ */
+private string lpml_decode_parse_spacey_key(mixed* parse) {
+  int from, to;
+  string out;
+  int ch;
+
+  from = parse[LPML_DECODE_PARSE_POS];
+
+  // Read until we hit ':'
+  while(parse[LPML_DECODE_PARSE_POS] < sizeof(parse[LPML_DECODE_PARSE_TEXT])) {
+    ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+
+    if(ch == 0)
+      lpml_decode_parse_error(parse, "Unexpected end of data in spacey key");
+
+    if(ch == ':')
+      break;  // Found the key separator
+
+    if(ch == '\n')
+      lpml_decode_parse_next_line(parse);
+    else
+      lpml_decode_parse_next_char(parse);
+  }
+
+  to = parse[LPML_DECODE_PARSE_POS] - 1;
+  out = string_decode(parse[LPML_DECODE_PARSE_TEXT][from .. to], "utf-8");
+
+  // Trim leading/trailing whitespace
+  out = trim(out);
+
+  if(strlen(out) == 0)
+    lpml_decode_parse_error(parse, "Empty spacey key");
+
+  return out;
+}
+
+/**
+ * Parses a LPML object from the given parse state.
+ */
+private mixed lpml_decode_parse_object(mixed* parse) {
+  mapping out = ([]);
+  int done = 0;
+  mixed key, value;
+  int ch;
+
+  lpml_decode_parse_next_char(parse);  // Skip {
+  lpml_decode_skip_whitespace_and_comments(parse);
+
+  ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+  if(ch == '}') {
+    lpml_decode_parse_next_char(parse);
+    return out;
+  }
+
+  while(!done) {
+    lpml_decode_skip_whitespace_and_comments(parse);
+    ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+
+    if(ch == 0)
+      lpml_decode_parse_error(parse, "Unexpected end of data");
+
+    // Parse key (quoted string, single-quoted string, identifier, or spacey key)
+    if(ch == '"') {
+      key = lpml_decode_parse_string(parse, '"');
+    } else if(ch == '\'') {
+      key = lpml_decode_parse_string(parse, '\'');
+    } else if(lpml_is_identifier_start(ch)) {
+      // Could be identifier or start of spacey key
+      // Parse as identifier first
+      key = lpml_decode_parse_identifier(parse);
+      
+      // Check if next non-whitespace is ':' or if there's more (spacey key)
+      lpml_decode_skip_whitespace_and_comments(parse);
+      ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+      
+      if(ch != ':') {
+        // Not a simple identifier - must be a spacey key
+        // We already parsed part of it, so read the rest
+        string rest = lpml_decode_parse_spacey_key(parse);
+        key = key + " " + rest;
+      }
+    } else {
+      // YAML-style spacey key - read until ':'
+      key = lpml_decode_parse_spacey_key(parse);
     }
-    return result;
+
+    // Find colon
+    lpml_decode_skip_whitespace_and_comments(parse);
+    ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+
+    if(ch != ':')
+      lpml_decode_parse_error(parse, "Expected ':'", ch);
+
+    lpml_decode_parse_next_char(parse);
+
+    // Parse value
+    lpml_decode_skip_whitespace_and_comments(parse);
+    value = lpml_decode_parse_value(parse);
+    out[key] = value;
+
+    // Check for comma or closing brace
+    lpml_decode_skip_whitespace_and_comments(parse);
+    ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+
+    if(ch == ',') {
+      lpml_decode_parse_next_char(parse);
+      lpml_decode_skip_whitespace_and_comments(parse);
+      ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+      // Trailing comma - check for closing brace
+      if(ch == '}') {
+        done = 1;
+        lpml_decode_parse_next_char(parse);
+      }
+    } else if(ch == '}') {
+      done = 1;
+      lpml_decode_parse_next_char(parse);
+    } else {
+      lpml_decode_parse_error(parse, "Expected ',' or '}'", ch);
+    }
   }
 
-  // Null-like
-  if(val == "null" || val == "~" || val == "undefined") return ([])[0];
-
-  // Boolean-ish
-  if(val == "true" || val == "yes") return 1;
-  if(val == "false" || val == "no") return 0;
-
-  // Numbers (int, float, hex)
-  if(sscanf(val, "%d", intval) && !nullp(val)) return intval;
-  if(sscanf(val, "%f", fval) && !nullp(val)) return fval;
-  if(strlen(val) > 2 && val[0..1] == "0x" && sscanf(val, "%x", intval) && !nullp(val)) return intval;
-
-  // Quoted string
-  if((val[0] == '"' && val[<1] == '"') || (val[0] == '\'' && val[<1] == '\''))
-    return val[1..<2];
-
-  // Fallback as-is
-  return val;
+  return out;
 }
 
 /**
- * Removes inline comments from a LPML line.
- *
- * This function identifies and removes comment portions of a line (beginning with #),
- * while being careful not to remove # characters that are within quoted strings.
- *
- * @param {string} line - The line to process
- * @returns {string} The line with any inline comments removed
- * @private
+ * Parses a LPML array from the given parse state.
  */
-// Quote-aware comment detection
-private string remove_inline_comment(string line) {
-  int pound_pos, left_quote, right_quote;
-  string quoted;
+private mixed lpml_decode_parse_array(mixed* parse) {
+  mixed* out = ({});
+  int done = 0;
+  int ch;
+  mixed value;
 
-  // Early return if no comment marker found
-  pound_pos = strsrch(line, "#");
-  if(pound_pos == -1)
-    return line;
+  lpml_decode_parse_next_char(parse);  // Skip [
+  lpml_decode_skip_whitespace_and_comments(parse);
 
-  // Check if comment marker is inside quotes
-  // This preserves # characters that are part of string content
-  if( (left_quote = strsrch(line, "\"")) != -1 ||
-      (left_quote = strsrch(line, "'"))  != -1) {
+  ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
 
-    right_quote = strsrch(line, line[left_quote], -1);
-
-    // If no matching quote found, assume incomplete quoted string
-    if(right_quote == -1)
-      return line;
-
-    // Return up to the closing quote
-    return line[0..right_quote];
+  if(ch == ']') {
+    lpml_decode_parse_next_char(parse);
+    return out;
   }
 
-  // Return everything before the comment marker
-  return line[0..pound_pos - 1];
+  while(!done) {
+    lpml_decode_skip_whitespace_and_comments(parse);
+    value = lpml_decode_parse_value(parse);
+    out += ({ value });
+
+    // Check for comma or closing bracket
+    lpml_decode_skip_whitespace_and_comments(parse);
+    ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+
+    if(ch == ',') {
+      lpml_decode_parse_next_char(parse);
+      lpml_decode_skip_whitespace_and_comments(parse);
+      ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+
+      // Trailing comma - check for closing bracket
+      if(ch == ']') {
+        done = 1;
+        lpml_decode_parse_next_char(parse);
+      }
+    } else if(ch == ']') {
+      done = 1;
+      lpml_decode_parse_next_char(parse);
+    } else {
+      lpml_decode_parse_error(parse, "Expected ',' or ']'", ch);
+    }
+  }
+
+  return out;
 }
 
 /**
- * Loads and parses a LPML file for inheritance/inclusion.
- *
- * This function handles the inclusion of external LPML files, allowing for
- * composition and reuse of LPML configurations through inheritance.
- *
- * @private
- * @param {string} file - Path to the LPML file to inherit
- * @param {mixed*} pages - Array of parsed LPML pages
- * @returns {mixed} The parsed contents of the inherited file
- * @errors If the file does not exist or cannot be read
+ * Parses a LPML string from the given parse state.
+ * Supports double quotes and single quotes (both allow multiline).
+ * Adjacent strings are automatically concatenated:
+ *   "foo" "bar"   → "foo bar" (space added)
+ *   "foo\n" "bar" → "foo\nbar" (no space if ends with \n)
  */
-private mixed lpml_inherit(string file, mixed *pages) {
-  string text, *lines;
-  mixed result;
+private varargs mixed lpml_decode_parse_string(mixed* parse, int quote_char) {
+  int from, to, esc_state, esc_active;
+  string out;
+  int ch;
+  int has_real_newlines = 0;
+  int saved_pos, saved_line, saved_char;
+  string next_str;
+  int needs_space;
 
-  if(file[0] == '/') {
-    if(!file_exists(file))
-      error("No such inherited file: " + file);
+  if(!quote_char) {
+    ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
 
-    text = read_file(file);
-    if(!text)
-      error("Could not read inherited file: " + file);
-  } else {
+    if(ch == '"')
+      quote_char = '"';
+    else if(ch == '\'')
+      quote_char = '\'';
+    else
+      lpml_decode_parse_error(parse, "Expected string", ch);
+  }
+
+  lpml_decode_parse_next_char(parse);  // Skip opening quote
+  from = parse[LPML_DECODE_PARSE_POS];
+  to = -1;
+  esc_state = 0;
+  esc_active = 0;
+  has_real_newlines = 0;  // Track if string spans multiple lines in source
+
+  while(to == -1) {
+    ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+
+    if(ch == 0)
+      lpml_decode_parse_error(parse, "Unexpected end of data in string");
+
+    // Allow newlines in strings
+    if(ch == '\n') {
+      has_real_newlines = 1;  // String spans multiple lines in source
+      lpml_decode_parse_next_line(parse);
+      continue;
+    }
+
+    if(ch == '\\') {
+      esc_state = !esc_state;
+    } else if(ch == quote_char) {
+      if(esc_state) {
+        esc_state = 0;
+        esc_active++;
+      } else {
+        to = parse[LPML_DECODE_PARSE_POS] - 1;
+      }
+    } else {
+      if(esc_state) {
+        esc_state = 0;
+        esc_active++;
+      }
+    }
+
+    lpml_decode_parse_next_char(parse);
+  }
+
+  out = string_decode(parse[LPML_DECODE_PARSE_TEXT][from .. to], "utf-8");
+
+  // Check for string concatenation - look for adjacent strings
+  // Save position before processing escapes in case we need to concatenate
+  saved_pos = parse[LPML_DECODE_PARSE_POS];
+  saved_line = parse[LPML_DECODE_PARSE_LINE];
+  saved_char = parse[LPML_DECODE_PARSE_CHAR];
+
+  // Process escape sequences
+  // IMPORTANT: Process \\\\ first, then other escapes
+  if(esc_active) {
+    string quote_str = sprintf("%c", quote_char);
+
+    // First, convert \\\\ to a placeholder to avoid double-processing
+    string backslash_placeholder = "\x01BACKSLASH\x01";
+    if(member_array('\\', out) != -1)
+      out = replace_string(out, "\\\\", backslash_placeholder);
+
+    // Now process other escape sequences
+    if(member_array(quote_char, out) != -1)
+      out = replace_string(out, "\\" + quote_str, quote_str);
+    if(strsrch(out, "\\b") != -1)
+      out = replace_string(out, "\\b", "\b");
+    if(strsrch(out, "\\f") != -1)
+      out = replace_string(out, "\\f", "\x0c");
+    if(strsrch(out, "\\n") != -1)
+      out = replace_string(out, "\\n", "\n");
+    if(strsrch(out, "\\r") != -1)
+      out = replace_string(out, "\\r", "\r");
+    if(strsrch(out, "\\t") != -1)
+      out = replace_string(out, "\\t", "\t");
+    if(member_array('/', out) != -1)
+      out = replace_string(out, "\\/", "/");
+
+    // Finally, convert placeholder back to single backslash
+    if(strsrch(out, backslash_placeholder) != -1)
+      out = replace_string(out, backslash_placeholder, "\\");
+  }
+
+  // No @ literal mode needed - use string concatenation instead
+
+  // Only fold if string had real newlines in source (not just \n escapes)
+  if(has_real_newlines && strsrch(out, "\n") != -1) {
+    // Folded mode - replace newlines with spaces
+    string* lines;
     int i, sz;
 
-    for(i = 0, sz = sizeof(pages); i < sz; i++) {
-      string page_path = pages[i][PAGE_TITLE];
-      if(page_path == file) {
-        text = pages[i][PAGE_SOURCE];
-        break;
+    lines = explode(out, "\n");
+    out = "";
+
+    for(i = 0, sz = sizeof(lines); i < sz; i++) {
+      string line = trim(lines[i]);
+
+      if(strlen(line) == 0) {
+        // Blank line becomes paragraph break (double space or newline)
+        if(strlen(out) > 0 && out[<1] != '\n')
+          out += "\n";
+      } else {
+        // Add space before line if needed
+        if(strlen(out) > 0 && out[<1] != '\n' && out[<1] != ' ')
+          out += " ";
+        out += line;
       }
     }
 
-    if(!text)
-      error("No such inherited LPML page: " + file);
+    // Trim any trailing whitespace
+    out = trim(out);
   }
 
-  lines = explode(text, "\n");
-  result = parse_block(lines, pages, 0)[0];
+  // String concatenation: check if next non-whitespace token is another string
+  lpml_decode_skip_whitespace_and_comments(parse);
+  ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+
+  if(ch == '"' || ch == '\'') {
+    // Another string follows - concatenate!
+    needs_space = 1;
+
+    // Check if current string ends with newline
+    if(strlen(out) > 0 && out[<1] == '\n')
+      needs_space = 0;
+
+    // Recursively parse the next string
+    next_str = lpml_decode_parse_string(parse, ch);
+
+    // Concatenate with or without space
+    if(needs_space)
+      out = out + " " + next_str;
+    else
+      out = out + next_str;
+  }
+
+  return out;
+}
+
+/**
+ * Parses a LPML number from the given parse state.
+ * Supports hex (0xFF), leading/trailing decimals (.5, 5.), plus sign (+5)
+ */
+private mixed lpml_decode_parse_number(mixed* parse) {
+  int from, to, dot, exp, ch, next_ch;
+  string number;
+  int is_hex = 0;
+  int is_negative = 0;
+
+  from = parse[LPML_DECODE_PARSE_POS];
+  to = -1;
+  dot = -1;
+  exp = -1;
+
+  ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+
+  // Handle sign
+  if(ch == '-' || ch == '+') {
+    if(ch == '-')
+      is_negative = 1;
+
+    lpml_decode_parse_next_char(parse);
+    ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+  }
+
+  // Check for Infinity - use undefined since LPC doesn't have Infinity
+  if(ch == 'I' && lpml_decode_parse_at_token(parse, "Infinity", 0)) {
+    lpml_decode_parse_next_chars(parse, 8);
+
+    return ([])[0];  // undefined
+  }
+
+  // Check for NaN - use undefined since LPC doesn't have NaN
+  if(ch == 'N' && lpml_decode_parse_at_token(parse, "NaN", 0)) {
+    lpml_decode_parse_next_chars(parse, 3);
+    return ([])[0];  // undefined
+  }
+
+  // Check for hex
+  if(ch == '0') {
+    next_ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS] + 1];
+
+    if(next_ch == 'x' || next_ch == 'X') {
+      is_hex = 1;
+      lpml_decode_parse_next_char(parse);  // Skip 0
+      lpml_decode_parse_next_char(parse);  // Skip x
+
+      from = parse[LPML_DECODE_PARSE_POS];
+      while(parse[LPML_DECODE_PARSE_POS] < sizeof(parse[LPML_DECODE_PARSE_TEXT])) {
+          ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+          if(lpml_decode_hexdigit(ch) == -1) break;
+          lpml_decode_parse_next_char(parse);
+      }
+      to = parse[LPML_DECODE_PARSE_POS] - 1;
+      number = string_decode(parse[LPML_DECODE_PARSE_TEXT][from .. to], "utf-8");
+      sscanf(number, "%x", ch);
+
+      return is_negative ? -ch : ch;
+    }
+  }
+
+  // Leading decimal point
+  if(ch == '.') {
+    dot = parse[LPML_DECODE_PARSE_POS];
+    lpml_decode_parse_next_char(parse);
+  }
+
+  // Parse number
+  while(to == -1 && parse[LPML_DECODE_PARSE_POS] < sizeof(parse[LPML_DECODE_PARSE_TEXT])) {
+    ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+
+    if(ch >= '0' && ch <= '9') {
+      lpml_decode_parse_next_char(parse);
+    } else if(ch == '.' && dot == -1 && exp == -1) {
+      dot = parse[LPML_DECODE_PARSE_POS];
+      lpml_decode_parse_next_char(parse);
+    } else if((ch == 'e' || ch == 'E') && exp == -1) {
+      exp = parse[LPML_DECODE_PARSE_POS];
+      lpml_decode_parse_next_char(parse);
+      // Handle exponent sign
+      ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+      if(ch == '+' || ch == '-')
+        lpml_decode_parse_next_char(parse);
+    } else {
+      to = parse[LPML_DECODE_PARSE_POS] - 1;
+    }
+  }
+
+  if(to == -1)
+    to = parse[LPML_DECODE_PARSE_POS] - 1;
+
+  number = string_decode(parse[LPML_DECODE_PARSE_TEXT][from .. to], "utf-8");
+
+  if(dot != -1 || exp != -1)
+    return to_float(number);
+  else
+    return to_int(number);
+}
+
+/**
+ * Parses a LPML value from the given parse state.
+ */
+private mixed lpml_decode_parse_value(mixed* parse) {
+  int ch;
+
+  lpml_decode_skip_whitespace_and_comments(parse);
+  ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+
+  if(ch == 0)
+    lpml_decode_parse_error(parse, "Unexpected end of data");
+
+  // Object
+  if(ch == '{')
+    return lpml_decode_parse_object(parse);
+
+  // Array
+  if(ch == '[')
+    return lpml_decode_parse_array(parse);
+
+  // String (double or single quoted, both support multiline)
+  if(ch == '"' || ch == '\'')
+    return lpml_decode_parse_string(parse, ch);
+
+  // Number (including +, leading ., hex)
+  if(ch == '-' || ch == '+' || ch == '.' || (ch >= '0' && ch <= '9'))
+    return lpml_decode_parse_number(parse);
+
+  // true
+  if(ch == 't' && lpml_decode_parse_at_token(parse, "true", 0)) {
+    lpml_decode_parse_next_chars(parse, 4);
+    return 1;
+  }
+
+  // false
+  if(ch == 'f' && lpml_decode_parse_at_token(parse, "false", 0)) {
+    lpml_decode_parse_next_chars(parse, 5);
+    return 0;
+  }
+
+  // null
+  if(ch == 'n' && lpml_decode_parse_at_token(parse, "null", 0)) {
+    lpml_decode_parse_next_chars(parse, 4);
+    return ([])[0];  // undefined
+  }
+
+  // Infinity - use undefined since LPC doesn't have Infinity
+  if(ch == 'I' && lpml_decode_parse_at_token(parse, "Infinity", 0)) {
+    lpml_decode_parse_next_chars(parse, 8);
+    return ([])[0];  // undefined
+  }
+
+  // NaN - use undefined since LPC doesn't have NaN
+  if(ch == 'N' && lpml_decode_parse_at_token(parse, "NaN", 0)) {
+    lpml_decode_parse_next_chars(parse, 3);
+    return ([])[0];  // undefined
+  }
+
+  lpml_decode_parse_error(parse, "Unexpected character", ch);
+
+  return 0;
+}
+
+/**
+ * Main parse function
+ */
+private mixed lpml_decode_parse(mixed* parse) {
+  mixed out;
+  int ch;
+
+  out = lpml_decode_parse_value(parse);
+
+  lpml_decode_skip_whitespace_and_comments(parse);
+  ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+
+  if(ch != 0)
+    lpml_decode_parse_error(parse, "Unexpected character after value", ch);
+
+  return out;
+}
+
+// File interpolation pattern: "#path"
+
+/**
+ * @simul_efun lpml_decode_preprocess
+ * @description Preprocesses LPML text to handle "#path" includes
+ * @param {string} text - The LPML string to preprocess
+ * @param {string} base_path - Base directory for relative paths
+ * @returns {string} - Preprocessed LPML text
+ *
+ * Looks for "#path" pattern and replaces with file contents.
+ * Use \# to escape literal # (per LPML spec).
+ */
+private string lpml_decode_preprocess(string text, string base_path) {
+  string source;
+  string result, file_path, file_text, include_base;
+  int start, end;
+
+  result = "";
+  source = text;
+
+  while(strlen(source) > 0) {
+    int dq_start, sq_start, dq_esc_start, sq_esc_start;
+    int is_single_quote = 0;
+    int is_escaped = 0;
+
+    // Look for "# or '# or "\# or '\# patterns
+    dq_start = strsrch(source, "\"#");
+    sq_start = strsrch(source, "'#");
+    dq_esc_start = strsrch(source, "\"\\#");
+    sq_esc_start = strsrch(source, "'\\#");
+
+    // Find the earliest match
+    start = -1;
+
+    if(dq_start != -1 && (start == -1 || dq_start < start)) {
+      start = dq_start;
+      is_single_quote = 0;
+      is_escaped = 0;
+    }
+    if(sq_start != -1 && (start == -1 || sq_start < start)) {
+      start = sq_start;
+      is_single_quote = 1;
+      is_escaped = 0;
+    }
+    if(dq_esc_start != -1 && (start == -1 || dq_esc_start < start)) {
+      start = dq_esc_start;
+      is_single_quote = 0;
+      is_escaped = 1;
+    }
+    if(sq_esc_start != -1 && (start == -1 || sq_esc_start < start)) {
+      start = sq_esc_start;
+      is_single_quote = 1;
+      is_escaped = 1;
+    }
+
+    if(start == -1) {
+      // No more includes or escapes
+      result += source;
+      break;
+    }
+
+    // If escaped, strip the backslash and skip
+    if(is_escaped) {
+      // Add everything before the escape, then quote+#
+      result += source[0..start-1];
+      if(is_single_quote)
+        result += "'#";
+      else
+        result += "\"#";
+      source = source[start+3..];
+      continue;
+    }
+
+    // Add text before the include (including the opening quote)
+    if(start > 0)
+      result += source[0..start-1];
+
+    // Find closing quote after the #
+    {
+      string remainder = source[start+2..];  // Skip quote + #
+      string close_quote = is_single_quote ? "'" : "\"";
+      int close_pos = strsrch(remainder, close_quote);
+      int i;
+
+      // Make sure the " isn't escaped
+      while(close_pos != -1) {
+        // Count preceding backslashes
+        int backslashes = 0;
+        i = close_pos - 1;
+
+        while(i >= 0 && remainder[i] == '\\') {
+          backslashes++;
+          i--;
+        }
+
+        // If odd number of backslashes, the " is escaped
+        if(backslashes % 2 == 0) {
+          // Not escaped - this is our closing quote
+          break;
+        }
+
+        // Escaped - keep looking
+        close_pos = strsrch(remainder, close_quote, close_pos + 1);
+      }
+
+      if(close_pos == -1) {
+        // No closing quote - keep the \"# and continue
+        result += source[start..start+1];
+        source = source[start+2..];
+        continue;
+      }
+
+      end = start + 2 + close_pos;  // Position of closing "
+    }
+
+    // Extract file path (between # and ")
+    file_path = source[start+2..end-1];
+
+    // Handle relative paths
+    file_path = resolve_relative_path(file_path, base_path);
+
+    // Try to read the file
+    if(!file_exists(file_path)) {
+      // File not found - keep the original string and continue
+      result += source[start..end];
+      source = source[end+1..];
+      continue;
+    }
+
+    file_text = read_file(file_path);
+    if(!file_text) {
+      // Could not read - keep the original string and continue
+      result += source[start..end];
+      source = source[end+1..];
+      continue;
+    }
+
+    // Trim trailing newline from read_file
+    if(file_text[<1] == '\n')
+      file_text = file_text[0..<2];
+
+    // Recursively preprocess (in case included file has includes)
+    include_base = strsrch(file_path, "/") != -1
+      ? file_path[0..strsrch(file_path, "/", -1)-1]
+      : "";
+
+    file_text = lpml_decode_preprocess(file_text, include_base);
+
+    // Insert the file content (no quotes around it)
+    result += file_text;
+
+    // Consume the processed part of source (skip the closing ")
+    source = source[end+1..];
+  }
+
+  // Final pass: strip \# escapes that weren't includes
+  result = replace_string(result, "\\#", "#");
 
   return result;
 }
+
+/**
+ * @simul_efun lpml_decode
+ * @description Deserializes a LPML string into an LPC value.
+ * @param {string} text - The LPML string to deserialize.
+ * @param {string} base_path - Optional base directory for relative includes
+ * @returns {mixed} - The deserialized LPC value.
+ */
+varargs mixed lpml_decode(string text, string base_path) {
+  mixed* parse;
+  buffer endl;
+
+  if(!text)
+    return 0;
+
+  // Preprocess includes
+  text = lpml_decode_preprocess(text, base_path);
+
+  debug(text);
+
+  endl = allocate_buffer(1);
+  endl[0] = 0;
+
+  parse = allocate(LPML_DECODE_PARSE_FIELDS);
+  parse[LPML_DECODE_PARSE_TEXT] = string_encode(text, "utf-8") + endl;
+  parse[LPML_DECODE_PARSE_POS] = 0;
+  parse[LPML_DECODE_PARSE_CHAR] = 1;
+  parse[LPML_DECODE_PARSE_LINE] = 1;
+
+  return lpml_decode_parse(parse);
+}
+
+/**
+ * @simul_efun lpml_encode
+ * @description Serializes an LPC value into JSON text.
+ * @param {mixed} value - The LPC value to serialize.
+ * @returns {string} - The JSON string representation.
+ *
+ * Note: Encoding produces standard JSON
+ */
+varargs string lpml_encode(mixed value, mixed* pointers) {
+  // Use standard JSON encoding - LPML is primarily for parsing
+  // For now, delegate to json_encode if available, or implement basic encoding
+
+  if(undefinedp(value))
+    return "null";
+  if(intp(value) || floatp(value))
+    return to_string(value);
+  if(stringp(value)) {
+    value = replace_string(value, "\\", "\\\\");
+    value = replace_string(value, "\"", "\\\"");
+    value = replace_string(value, "\n", "\\n");
+    value = replace_string(value, "\r", "\\r");
+    value = replace_string(value, "\t", "\\t");
+    return sprintf("\"%s\"", value);
+  }
+
+  if(mapp(value)) {
+    string out;
+    int ix = 0;
+
+    if(pointers && member_array(value, pointers) != -1)
+        return "null";
+
+    pointers = pointers ? pointers + ({ value }) : ({ value });
+
+    foreach(mixed k, mixed v in value) {
+      if(!stringp(k))
+        continue;
+
+      if(ix++)
+        out = sprintf("%s,%s:%s", out, lpml_encode(k, pointers), lpml_encode(v, pointers));
+      else
+        out = sprintf("%s:%s", lpml_encode(k, pointers), lpml_encode(v, pointers));
+    }
+
+    return sprintf("{%s}", out || "");
+  }
+
+  if(pointerp(value)) {
+    string out;
+    int ix = 0;
+
+    if(sizeof(value) == 0)
+      return "[]";
+
+    if(pointers && member_array(value, pointers) != -1)
+      return "null";
+
+    pointers = pointers ? pointers + ({ value }) : ({ value });
+
+    foreach(mixed v in value) {
+      if(ix++)
+        out = sprintf("%s,%s", out, lpml_encode(v, pointers));
+      else
+        out = lpml_encode(v, pointers);
+    }
+
+    return sprintf("[%s]", out);
+  }
+
+  return "null";
+}
+
+#endif /* __STD_LPML_H */
