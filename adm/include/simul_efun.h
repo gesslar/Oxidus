@@ -108,7 +108,8 @@ mixed json_decode(string str);
 mapping json_encode(mixed arg);
 
 // File: lpml.c
-mixed lpml_decode(string text);
+mixed lpml_decode(string text, string path);
+mixed lpml_encode(string text);
 
 // File: mapping.c
 string pretty_map(mapping map);

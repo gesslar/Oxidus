@@ -3,12 +3,12 @@
  *
  * Configuration management daemon that provides a centralized system for
  * game settings. Uses a cascading configuration pattern where default values
- * are loaded from default.json and can be overridden by local settings in
- * config.json.
+ * are loaded from default.lpml and can be overridden by local settings in
+ * config.lpml.
  *
  * The two-file system enables:
- * - Default values stored in git (/adm/etc/default.json)
- * - Local overrides in /adm/etc/config.json (not in git)
+ * - Default values stored in git (/adm/etc/default.lpml)
+ * - Local overrides in /adm/etc/config.lpml (not in git)
  * - Easy upgrades without losing custom settings
  * - Environment-specific configurations
  *
@@ -25,10 +25,10 @@ inherit STD_DAEMON;
 public void rehash_config();
 public mixed get_mud_config(string key);
 
-private nosave string DEFAULT_CONFIG = "/adm/etc/default.json";
-private nosave string CONFIG_FILE = "/adm/etc/config.json";
+private nosave string DEFAULT_CONFIG = "/adm/etc/default.lpml";
+private nosave string CONFIG_FILE = "/adm/etc/config.lpml";
 private nosave mapping config = ([ ]);
-
+private nosave int loaded = false;
 /**
  * Initializes the configuration daemon.
  *
@@ -37,6 +37,8 @@ private nosave mapping config = ([ ]);
 void setup() {
   set_no_clean(1);
   rehash_config();
+
+  loaded = true;
 }
 
 /**
@@ -47,6 +49,9 @@ void setup() {
  * @errors If config is null, key is missing, or key is invalid
  */
 public mixed get_mud_config(string key) {
+  if(!loaded)
+    return null;
+
   if(nullp(config))
     error("get_mud_config: No configuration found.");
 
@@ -54,6 +59,7 @@ public mixed get_mud_config(string key) {
     error("get_mud_config: Missing key.");
 
   if(nullp(config[key]))
+    // return null;
     error("get_mud_config: Invalid key: " + key + ".");
 
   return config[key];
@@ -63,23 +69,25 @@ public mixed get_mud_config(string key) {
  * Reloads configuration from both default and override files.
  *
  * Loads and merges configurations in this order:
- * 1. /adm/etc/default.json - Base configuration
- * 2. /adm/etc/config.json - Local overrides
+ * 1. /adm/etc/default.lpml - Base configuration
+ * 2. /adm/etc/config.lpml - Local overrides
  *
  * Later values override earlier ones for the same keys.
  */
 public void rehash_config() {
   mapping temp;
 
+  debug_message(call_trace(false));
+
   if(file_exists(DEFAULT_CONFIG)) {
-    temp = json_decode(read_file(DEFAULT_CONFIG));
+    temp = lpml_decode(read_file(DEFAULT_CONFIG));
 
     if(mapp(temp))
       config += temp;
   }
 
   if(file_exists(CONFIG_FILE)) {
-    temp = json_decode(read_file(CONFIG_FILE));
+    temp = lpml_decode(read_file(CONFIG_FILE));
 
     if(mapp(temp))
       config += temp;
