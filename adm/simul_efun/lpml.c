@@ -88,7 +88,7 @@ private string resolve_relative_path(string relative_path, string relative_to) {
           "from '"+relative_to+"'"
         );
 
-      relative_path_parts = ({relative_to_parts[<1]}) + relative_path_parts;
+      relative_path_parts = ({relative_to_parts[<1]}) + relative_path_parts[2..];
       relative_to_parts = relative_to_parts[0..<2];
     }
 
