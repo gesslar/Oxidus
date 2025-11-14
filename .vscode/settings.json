@@ -42,7 +42,11 @@
     ]
   },
   "files.associations": {
-    "*.lpml": "yaml",
+    "*.lpml": "lpml",
+  },
+  "[lpml]": {
+    "editor.formatOnSave": false,
+    "editor.defaultFormatter": null
   },
   "files.insertFinalNewline": true,
   "files.trimFinalNewlines": true,
