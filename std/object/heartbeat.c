@@ -76,7 +76,7 @@ protected evaluate_heart_beat() {
 
         catch {
           f = bind(hb_events[i][2], this_object());
-          (*f)();
+          f();
         };
       }
 

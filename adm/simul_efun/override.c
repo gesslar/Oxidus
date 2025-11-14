@@ -156,3 +156,13 @@ varargs mixed element_of(mixed *arr, int secure) {
 
   error("Invalid array passed to element_of()");
 }
+
+void debug_message(string str) {
+  string timestamp;
+
+  str = chop(str, "\n", -1) ;
+
+  timestamp = strftime("%Y/%m/%d %H:%M:%S", time()) ;
+  efun::debug_message(sprintf("%s %s", timestamp, str));
+  log_file("debug.log", sprintf("%s %s\n", timestamp, str));
+}

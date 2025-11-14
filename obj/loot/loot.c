@@ -59,8 +59,11 @@ void virtual_setup(mixed args...) {
     add_id(data["additional ids"]);
 
   // Set any custom functions or properties
-  if(valid_function(data["custom setup"]))
-    (*data["custom setup"])(this_object());
+  if(valid_function(data["custom setup"])) {
+    function f = data["custom setup"];
+
+    f(this_object());
+  }
 }
 
 mixed query_loot_property(string key) {

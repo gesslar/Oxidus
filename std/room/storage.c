@@ -64,9 +64,9 @@ object store() {
       break;
     case "private": {
       mixed id = storage_options.storage_id;
+      function f = valid_function(id) ? id : null;
 
-      if(valid_function(id))
-        id = (*id)();
+      id = f ? f() : id;
 
       if(!stringp(id))
         error("Invalid storage ID specified for private storage");

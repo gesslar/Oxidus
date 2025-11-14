@@ -196,8 +196,10 @@ varargs void proc(string name, mixed args...) {
 
   if(stringp(func))
     catch(call_other(this_object(), func, args...));
-  else if(valid_function(func))
-    catch((*func)(args...));
+  else if(valid_function(func)) {
+    function f = func;
+    catch(f(args...));
+  }
   else
     return;
 

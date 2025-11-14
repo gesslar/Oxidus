@@ -91,8 +91,11 @@ string query_item(string id) {
     }
   }
 
-  if(valid_function(result))
-    result = (*result)(id);
+  if(valid_function(result)) {
+    function f = (function)result;
+
+    result = f(id);
+  }
 
   if(stringp(result) && result[0..1] == "@@")
     return call_other(this_object(), result[2..], id);

@@ -149,14 +149,15 @@ void init_commands() {
  * @returns {mixed} Result of command evaluation, or null if no handler
  */
 mixed evaluate_command(object user, string command, string arg) {
-  mixed action = _commands[command];
-
-  if(stringp(action))
+  if(stringp(_commands[command]))
     return call_other(this_object(), action, user, arg);
-  else if(valid_function(action))
-    return (*action)(user, arg);
 
-  return null;
+  if(!valid_function(_commands[command]))
+    return null;
+
+  function action = _commands[command];
+
+  return action(user, arg);
 }
 
 string process_input(string arg) {
