@@ -294,7 +294,7 @@ void remove_reset(function f) {
 void process_reset() {
   foreach(function f in _reset_functions)
     if(valid_function(f))
-      catch((*f)());
+      catch(f());
 }
 
 /**
@@ -379,7 +379,7 @@ string query_last_location() {
  */
 void process_destruct() {
   foreach(function f in _destruct_functions)
-    catch(evaluate(f));
+    catch(f());
 }
 
 /**
@@ -388,7 +388,7 @@ void process_destruct() {
  * @param {int|function} val - Boolean or function to determine if pickup is prevented
  */
 void set_prevent_get(mixed val) {
-  assert_arg(valid_function(val) || (!nullp(val) && intp(val), 1, "Invalid argument."));
+  assert_arg(valid_function(val) || (!nullp(val) && intp(val)), 1, "Invalid argument.");
 
   if(intp(val))
     _prevent_get = !!val;
@@ -406,10 +406,10 @@ void set_prevent_get(mixed val) {
 int query_prevent_get() {
   int result;
 
-  if(valid_function(_prevent_get))
-    result = catch((*_prevent_get)(this_object()));
-  else
-    result = _prevent_get;
+  if(!valid_function(_prevent_get))
+    return _prevent_get;
 
-  return result;
+  function f = _prevent_get;
+
+  return f(this_object());
 }

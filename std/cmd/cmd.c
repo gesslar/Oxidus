@@ -28,12 +28,20 @@ private void create() {
 }
 
 string query_help(object caller) {
+
+}
+#if 0
+string query_help(object caller) {
   string result;
   string temp;
 
-  if(valid_function(help_text))
-    temp = evaluate(help_text, caller);
-  else if(stringp(help_text))
+  if(valid_function(help_text)) {
+    debug_message(sprintf("%O", help_text));
+    catch {
+    temp = help_text(caller);
+    };
+  }
+    else if(stringp(help_text))
     temp = help_text;
   else
     return "There is no help available on this topic.";
@@ -41,7 +49,7 @@ string query_help(object caller) {
   result = append(temp, "\n");
 
   if(valid_function(usage_text))
-    temp = evaluate(temp, caller);
+    temp = temp(caller);
   else if(stringp(usage_text))
     temp = usage_text;
 
@@ -53,6 +61,7 @@ string query_help(object caller) {
 
   return result;
 }
+#endif
 
 string resolve_file(object tp, string arg) {
   object ob;
@@ -98,6 +107,11 @@ string resolve_dir(object tp, string arg) {
 }
 
 int _usage(object tp) {
+  return 1;
+}
+
+#if 0
+int _usage(object tp) {
   string result;
   string *parts;
   int len, pos;
@@ -105,7 +119,7 @@ int _usage(object tp) {
   if(stringp(usage_text))
     result = usage_text;
   else if(valid_function(usage_text))
-    result = evaluate(usage_text, tp);
+    result = usage_text(tp);
   else
     return 0;
 
@@ -123,6 +137,7 @@ int _usage(object tp) {
 
   return 1;
 }
+#endif
 
 private nosave string *_verb_rules = ({});
 
@@ -141,23 +156,6 @@ public void set_verb_rules(string *rules) {
 
 public string *query_verb_rules() {
   return copy(_verb_rules);
-}
-
-public int process_verb_rules(object caller, string arg) {
-  string err;
-  mixed result;
-
-  err = catch(result =
-    PARSE_D->handle_command(
-      this_object(),
-      query_file_name(),
-      arg,
-      deep_inventory(environment(caller)),
-      caller
-    )
-  );
-
-  return result;
 }
 
 int is_command() {

@@ -11,10 +11,13 @@
  * - Multiline strings with automatic folding (real newlines → spaces)
  * - String concatenation: adjacent strings auto-join with smart spacing
  * - Trailing commas in objects and arrays
- * - Hexadecimal numbers (0xFF)
+ * - Hexadecimal numbers (0xFF, 0XFF)
+ * - Octal numbers (0o77, 0O77)
+ * - Binary numbers (0b1010, 0B1010)
  * - Leading/trailing decimal points (.5, 5.)
  * - Plus sign on numbers (+5)
- * - Infinity and NaN
+ * - undefined keyword (maps to ([])[0] like null)
+ * - MAX_INT and MAX_FLOAT constants (with optional +/- sign)
  * - File includes with "#path" syntax (use \# to escape literal #)
  *
  * mixed lpml_decode(string text, string base_path)
@@ -612,13 +615,15 @@ private varargs mixed lpml_decode_parse_string(mixed* parse, int quote_char) {
 
 /**
  * Parses a LPML number from the given parse state.
- * Supports hex (0xFF), leading/trailing decimals (.5, 5.), plus sign (+5)
+ * Supports hex (0xFF), octal (0o77), binary (0b1010),
+ * leading/trailing decimals (.5, 5.), plus sign (+5)
  */
 private mixed lpml_decode_parse_number(mixed* parse) {
   int from, to, dot, exp, ch, next_ch;
   string number;
   int is_hex = 0;
   int is_negative = 0;
+  int result;
 
   from = parse[LPML_DECODE_PARSE_POS];
   to = -1;
@@ -634,41 +639,74 @@ private mixed lpml_decode_parse_number(mixed* parse) {
 
     lpml_decode_parse_next_char(parse);
     ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+
+    // Check for MAX_INT or MAX_FLOAT after sign
+    if(ch == 'M') {
+      if(lpml_decode_parse_at_token(parse, "MAX_INT", 0)) {
+        lpml_decode_parse_next_chars(parse, 7);
+        return is_negative ? -MAX_INT : MAX_INT;
+      }
+      if(lpml_decode_parse_at_token(parse, "MAX_FLOAT", 0)) {
+        lpml_decode_parse_next_chars(parse, 9);
+        return is_negative ? -MAX_FLOAT : MAX_FLOAT;
+      }
+    }
   }
 
-  // Check for Infinity - use undefined since LPC doesn't have Infinity
-  if(ch == 'I' && lpml_decode_parse_at_token(parse, "Infinity", 0)) {
-    lpml_decode_parse_next_chars(parse, 8);
-
-    return ([])[0];  // undefined
-  }
-
-  // Check for NaN - use undefined since LPC doesn't have NaN
-  if(ch == 'N' && lpml_decode_parse_at_token(parse, "NaN", 0)) {
-    lpml_decode_parse_next_chars(parse, 3);
-    return ([])[0];  // undefined
-  }
-
-  // Check for hex
+  // Check for special number formats (hex, octal, binary)
   if(ch == '0') {
     next_ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS] + 1];
 
+    // Hexadecimal: 0xFF or 0XFF
     if(next_ch == 'x' || next_ch == 'X') {
-      is_hex = 1;
       lpml_decode_parse_next_char(parse);  // Skip 0
-      lpml_decode_parse_next_char(parse);  // Skip x
+      lpml_decode_parse_next_char(parse);  // Skip x/X
 
       from = parse[LPML_DECODE_PARSE_POS];
       while(parse[LPML_DECODE_PARSE_POS] < sizeof(parse[LPML_DECODE_PARSE_TEXT])) {
-          ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
-          if(lpml_decode_hexdigit(ch) == -1) break;
-          lpml_decode_parse_next_char(parse);
+        ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+        if(lpml_decode_hexdigit(ch) == -1) break;
+        lpml_decode_parse_next_char(parse);
       }
       to = parse[LPML_DECODE_PARSE_POS] - 1;
       number = string_decode(parse[LPML_DECODE_PARSE_TEXT][from .. to], "utf-8");
-      sscanf(number, "%x", ch);
+      sscanf(number, "%x", result);
 
-      return is_negative ? -ch : ch;
+      return is_negative ? -result : result;
+    }
+
+    // Octal: 0o77 or 0O77
+    if(next_ch == 'o' || next_ch == 'O') {
+      lpml_decode_parse_next_char(parse);  // Skip 0
+      lpml_decode_parse_next_char(parse);  // Skip o/O
+
+      from = parse[LPML_DECODE_PARSE_POS];
+      result = 0;
+      while(parse[LPML_DECODE_PARSE_POS] < sizeof(parse[LPML_DECODE_PARSE_TEXT])) {
+        ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+        if(ch < '0' || ch > '7') break;
+        result = (result * 8) + (ch - '0');
+        lpml_decode_parse_next_char(parse);
+      }
+
+      return is_negative ? -result : result;
+    }
+
+    // Binary: 0b1010 or 0B1010
+    if(next_ch == 'b' || next_ch == 'B') {
+      lpml_decode_parse_next_char(parse);  // Skip 0
+      lpml_decode_parse_next_char(parse);  // Skip b/B
+
+      from = parse[LPML_DECODE_PARSE_POS];
+      result = 0;
+      while(parse[LPML_DECODE_PARSE_POS] < sizeof(parse[LPML_DECODE_PARSE_TEXT])) {
+        ch = parse[LPML_DECODE_PARSE_TEXT][parse[LPML_DECODE_PARSE_POS]];
+        if(ch != '0' && ch != '1') break;
+        result = (result << 1) + (ch - '0');
+        lpml_decode_parse_next_char(parse);
+      }
+
+      return is_negative ? -result : result;
     }
   }
 
@@ -756,16 +794,22 @@ private mixed lpml_decode_parse_value(mixed* parse) {
     return ([])[0];  // undefined
   }
 
-  // Infinity - use undefined since LPC doesn't have Infinity
-  if(ch == 'I' && lpml_decode_parse_at_token(parse, "Infinity", 0)) {
-    lpml_decode_parse_next_chars(parse, 8);
+  // undefined
+  if(ch == 'u' && lpml_decode_parse_at_token(parse, "undefined", 0)) {
+    lpml_decode_parse_next_chars(parse, 9);
     return ([])[0];  // undefined
   }
 
-  // NaN - use undefined since LPC doesn't have NaN
-  if(ch == 'N' && lpml_decode_parse_at_token(parse, "NaN", 0)) {
-    lpml_decode_parse_next_chars(parse, 3);
-    return ([])[0];  // undefined
+  // MAX_INT
+  if(ch == 'M' && lpml_decode_parse_at_token(parse, "MAX_INT", 0)) {
+    lpml_decode_parse_next_chars(parse, 7);
+    return MAX_INT;
+  }
+
+  // MAX_FLOAT
+  if(ch == 'M' && lpml_decode_parse_at_token(parse, "MAX_FLOAT", 0)) {
+    lpml_decode_parse_next_chars(parse, 9);
+    return MAX_FLOAT;
   }
 
   lpml_decode_parse_error(parse, "Unexpected character", ch);

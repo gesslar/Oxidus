@@ -111,10 +111,15 @@ int evaluate_decision(class Decision decision, mapping data) {
   class Score score;
   int total_score = 0;
 
-  if(!evaluate(decision.condition, data)) return -MAX_INT;
+  function f = valid_function(decision.condition) ? decision.condition : null;
+  if(f && !f(data))
+    return -MAX_INT;
 
   foreach(score in decision.scores) {
-    total_score += evaluate(score.callback, data);
+    if(valid_function(score.callback)) {
+      function scoreFunc = score.callback;
+      total_score += scoreFunc(data);
+    }
   }
 
   return total_score;

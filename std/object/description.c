@@ -41,17 +41,11 @@ int set_short(mixed str) {
  * @returns {string} The short description, or 0 if none exists
  */
 string query_short(object viewer: (: this_body() :)) {
-  mixed result;
+  function f = valid_function(short) ? short : null;
 
-  result = short;
+  string result = f ? f(viewer) : short;
 
-  if(valid_function(result))
-    result = (*result)(viewer);
-
-  if(!stringp(result))
-    result = 0;
-
-  return result;
+  return stringp(result) ? result : 0;
 }
 
 /**
@@ -76,17 +70,11 @@ int set_long(mixed str) {
  * @returns {string} The long description, or 0 if none exists
  */
 string query_long(object viewer: (: this_body() :)) {
-  mixed result;
+  function f = valid_function(long) ? long : null;
 
-  result = long;
+  string result = f ? f(viewer) : long;
 
-  if(valid_function(result))
-    result = (*result)(viewer);
-
-  if(!stringp(result))
-    result = 0;
-
-  return result;
+  return stringp(result) ? result : 0;
 }
 
 /**

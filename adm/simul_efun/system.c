@@ -199,7 +199,7 @@ private nosave mapping _symbols = ([
   "debug"   : ({ ({ SYSTEM_DEBUG,   "" }), ({ "\u25A1 ", "o ", "" }) }), // □ = white square
 ]);
 
-private string _format_message(string type, string str, mixed args...) {
+private string _format_message(string type, int includeDecoration, string str, mixed args...) {
   /** @type {STD_BODY} */
   object body = this_body();
   mixed *symbol = _symbols[type];
@@ -207,7 +207,7 @@ private string _format_message(string type, string str, mixed args...) {
   string final;
 
   if(body) {
-    if(body->has_screenreader()) {
+    if(body->has_screenreader() || !includeDecoration) {
       colour_index = 1;
       tag_index = 2;
     } else {
@@ -233,6 +233,7 @@ private string _format_message(string type, string str, mixed args...) {
 private varargs class SystemMessage constructMessageFromArgs(string type, mixed args...) {
   string str;
   class SystemMessage system_message;
+  object ob;
 
   if(!sizeof(args))
     return 0;
@@ -241,6 +242,7 @@ private varargs class SystemMessage constructMessageFromArgs(string type, mixed 
     return 0;
 
   if(objectp(args[0])) {
+    ob = args[0];
     str = args[1];
     args = args[2..];
   } else if(stringp(args[0])) {
@@ -250,7 +252,12 @@ private varargs class SystemMessage constructMessageFromArgs(string type, mixed 
 
   system_message = new(class SystemMessage,
     type: type,
-    message: _format_message(type, str, args...)
+    message: _format_message(
+      type,
+      objectp(ob) && interactive(ob),
+      str,
+      args...
+    )
   );
 
   return system_message.message
@@ -273,10 +280,10 @@ private int _feedback(string type, mixed args...) {
     : this_body()
   ;
 
-  if(tp)
+  if(tp && interactive(tp))
     tell(tp, append(result.message, "\n"));
   else
-    debug(mess);
+    debug(result.message);
 
   return 1;
 }
