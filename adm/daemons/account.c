@@ -55,8 +55,6 @@ void setup() {
  * }
  */
 int create_account(string name, string password) {
-  mapping account;
-
   if(!valid_manip(name))
     return 0;
 
@@ -74,7 +72,7 @@ int create_account(string name, string password) {
 
   name = lower_case(name);
 
-  account = ([
+  mapping account = ([
     "password" : password,
     "characters" : ({})
   ]);
@@ -96,8 +94,6 @@ int create_account(string name, string password) {
  * @returns {mapping} The account data if found, null otherwise
  */
 mapping load_account(string name) {
-  string file;
-
   if(!valid_manip(name))
     return null;
 
@@ -105,7 +101,7 @@ mapping load_account(string name) {
     return null;
 
   if(!accounts[name]) {
-    file = account_file(name);
+    string file = account_file(name);
 
     if(!file_exists(file))
       return null;
@@ -128,8 +124,6 @@ mapping load_account(string name) {
  * @returns {mixed} The stored value on success, 0 on failure
  */
 string write_account(string name, string key, mixed data) {
-  mapping account;
-
   if(!valid_manip(name))
     return 0;
 
@@ -142,8 +136,7 @@ string write_account(string name, string key, mixed data) {
   if(!data)
     return 0;
 
-  account = load_account(name);
-
+  mapping account = load_account(name);
   if(!account)
     return 0;
 
@@ -164,8 +157,6 @@ string write_account(string name, string key, mixed data) {
  * @returns {mixed} The stored value if found, 0 otherwise
  */
 mixed read_account(string name, string key) {
-  mapping account;
-
   if(!valid_manip(name))
     return 0;
 
@@ -175,8 +166,7 @@ mixed read_account(string name, string key) {
   if(!key || !stringp(key))
     return 0;
 
-  account = load_account(name);
-
+  mapping account = load_account(name);
   if(!account)
     return 0;
 
@@ -248,9 +238,6 @@ int remove_account(string name) {
  * @returns {int} 1 on success, null on failure
  */
 int add_character(string account_name, string str) {
-  mapping account;
-  string *characters;
-
   if(!account_name || !stringp(account_name))
     return null;
 
@@ -265,12 +252,11 @@ int add_character(string account_name, string str) {
 
   str = lower_case(str);
 
-  account = load_account(account_name);
-
+  mapping account = load_account(account_name);
   if(!account)
     return 0;
 
-  characters = account["characters"] || ({});
+  string *characters = account["characters"] || ({});
   characters += ({ str });
   account["characters"] = distinct_array(characters);
   accounts[account_name] = account;
@@ -291,9 +277,6 @@ int add_character(string account_name, string str) {
  * @returns {int} 1 on success, null on failure
  */
 int remove_character(string account_name, string str) {
-  mapping account;
-  string *characters;
-
   if(!account_name || !stringp(account_name))
     return null;
 
@@ -308,12 +291,11 @@ int remove_character(string account_name, string str) {
 
   str = lower_case(str);
 
-  account = load_account(account_name);
-
+  mapping account = load_account(account_name);
   if(!account)
     return 0;
 
-  characters = account["characters"] || ({});
+  string *characters = account["characters"] || ({});
   characters -= ({ str });
   account["characters"] = characters;
   accounts[account_name] = account;
@@ -348,8 +330,6 @@ string character_account(string str) {
 * @returns {string *} Array of character names if found, null otherwise
 */
 string *account_characters(string account_name) {
-  mapping account;
-
   if(!account_name || !stringp(account_name))
     return null;
 
@@ -359,8 +339,7 @@ string *account_characters(string account_name) {
   if(!accounts[account_name])
     return null;
 
-  account = load_account(account_name);
-
+  mapping account = load_account(account_name);
   if(!account)
     return 0;
 

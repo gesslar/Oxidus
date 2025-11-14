@@ -47,39 +47,43 @@ void mudlib_setup() {
  * @errors If private storage is missing required directory info
  */
 void set_storage_options(class StorageOptions storage) {
-    mixed id;
+  storage_options = copy(storage);
 
-    storage_options = storage;
+  mixed storageId = storage_options.storage_id;
 
-    id = storage_options.storage_id;
-    if(id) {
-        if(valid_function(id))
-            id = (*id)();
-    } else if(storage_options.storage_org) {
-        id = storage_options.storage_org;
-    } else {
-        error("Either storage_id or storage_org must be specified in storage options.");
+  if(storageId) {
+    if(valid_function(storageId)) {
+      debug("Typeof storageid %O", typeof(storageId));
+      debug("storageId = %O", storageId);
+
+      function f = storageId;
+      storageId = f();
+    }
+  } else if(storage_options.storage_org) {
+    storageId = storage_options.storage_org;
+  } else {
+    error("Either storage_id or storage_org must be specified in storage options.");
+  }
+
+  if(!stringp(storageId))
+    error("storage_id must resolve to a string.");
+
+  storage_options.storage_id = storageId;
+
+  if(storage_options.restore_on_load) {
+    if(storage_options.storage_type == "private") {
+      // we must have an storage_directory. if we don't, then we can use
+      // the storage_org
+
+      if(!storage_options.storage_directory)
+        if(!storage_options.storage_org)
+          error("For private storage, storage_directory is only optional if storage_org is specified.");
+        else
+          storage_options.storage_directory = storage_options.storage_org;
     }
 
-    if(!stringp(id))
-        error("storage_id must resolve to a string.");
-
-    storage_options.storage_id = id;
-
-    if(storage_options.restore_on_load) {
-        if(storage_options.storage_type == "private") {
-            // we must have an storage_directory. if we don't, then we can use
-            // the storage_org
-
-            if(!storage_options.storage_directory)
-                if(!storage_options.storage_org)
-                    error("For private storage, storage_directory is only optional if storage_org is specified.");
-                else
-                    storage_options.storage_directory = storage_options.storage_org;
-        }
-
-        restore_contents();
-    }
+    restore_contents();
+  }
 }
 
 /**
@@ -88,7 +92,7 @@ void set_storage_options(class StorageOptions storage) {
  * @returns {class StorageOptions} The current storage configuration
  */
 class StorageOptions query_storage_options() {
-    return storage_options;
+  return storage_options;
 }
 
 /**

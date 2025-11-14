@@ -294,8 +294,10 @@ protected nomask void send_http_response(int fd, mapping client) {
   foreach(string header, mixed value in headers) {
     mixed val;
 
-    if(valid_function(value))
-        val = (*value)(client);
+    if(valid_function(value)) {
+      function f = value;
+      val = f(client);
+    }
     else
         val = value;
 

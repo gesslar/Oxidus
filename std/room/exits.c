@@ -56,20 +56,19 @@ string *query_exit_ids() {
  * @returns {string} The destination path, or null if exit doesn't exist
  */
 string query_exit(string id) {
-  mixed dest;
-
   if(nullp(_exits[id]))
     return null;
 
-  dest = _exits[id];
-
-  if(valid_function(dest))
-    dest = (*dest)();
-
+  mixed dest = _exits[id];
   if(stringp(dest))
-    dest = resolve_path(query_directory(), dest);
+    return resolve_path(query_directory(), dest);
 
-  return dest;
+  if(!valid_function(dest))
+    return null;
+
+  function f = dest;
+
+  return resolve_path(query_directory(), f());
 }
 
 /**
@@ -85,8 +84,10 @@ varargs object query_exit_dest(string id, int loaded) {
   if(!dest)
     return null;
 
-  if(valid_function(dest))
-    dest = (*dest)();
+  if(valid_function(dest)) {
+    function f = dest;
+    dest = f();
+  }
 
   if(stringp(dest)) {
     dest = resolve_path(query_directory(), dest);
@@ -260,13 +261,14 @@ mixed query_post_exit_func(string dir) {
  * @param {object} who - The object trying to use the exit
  */
 void evaluate_pre_exit_func(string dir, object who) {
-  mixed func = _pre_exit_funcs[dir];
+  if(stringp(_pre_exit_funcs[dir]))
+    return catch(call_other(this_object(), _pre_exit_funcs[dir], who));
 
-  if(stringp(func))
-    return catch(call_other(this_object(), func, who));
+  if(valid_function(_pre_exit_funcs[dir])) {
+    function f = _pre_exit_funcs[dir];
 
-  if(valid_function(func))
-    return catch((*func)(who));
+    return f(who);
+  }
 }
 
 /**
@@ -276,11 +278,12 @@ void evaluate_pre_exit_func(string dir, object who) {
  * @param {object} who - The object that used the exit
  */
 void evaluate_post_exit_func(string dir, object who) {
-  mixed func = _post_exit_funcs[dir];
+  if(stringp(_post_exit_funcs[dir]))
+    return catch(call_other(this_object(), _pre_exit_funcs[dir], who));
 
-  if(stringp(func))
-    return catch(call_other(this_object(), func, who));
+  if(valid_function(_post_exit_funcs[dir])) {
+    function f = _post_exit_funcs[dir];
 
-  if(valid_function(func))
-    return catch((*func)(who));
+    return f(who);
+  }
 }

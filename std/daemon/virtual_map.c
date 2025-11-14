@@ -57,7 +57,7 @@ protected varargs void apply_map_generator(function f, int indeterminate) {
     error("Invalid map generator function.");
 
   noise_map = f;
-  result = (*f)();
+  result = f();
 
   if(!indeterminate)
     if(!result || !pointerp(result))

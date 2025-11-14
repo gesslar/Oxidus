@@ -96,8 +96,8 @@ varargs string call_trace(int colour) {
         string *programs, string *lines, string *functions, string *origins, string *cols, function match_body) {
           return sprintf("%s[%s%s{{res}}] %s%s{{res}}:%s%s{{res}}->%s%s{{res}}() (%s%s{{res}})\n",
             acc,
-            (*match_body)(obj) ? cols[5] : cols[0],
-            (*match_body)(obj) ? sprintf("%s", file_name(obj)) : sprintf("%O", obj),
+            match_body(obj) ? cols[5] : cols[0],
+            match_body(obj) ? sprintf("%s", file_name(obj)) : sprintf("%O", obj),
             cols[1],
             programs[index+1],
             cols[2],
@@ -189,7 +189,7 @@ mixed *assemble_call_back(mixed arg...) {
  */
 mixed call_back(mixed cb, mixed new_arg...) {
   int sz;
-  mixed fun;
+  function fun;
   mixed final_arg = ({});
 
   if(!pointerp(cb))
@@ -234,7 +234,7 @@ mixed call_back(mixed cb, mixed new_arg...) {
   } else
     return null;
 
-  return catch((*fun)(final_arg...));
+  return catch(fun(final_arg...));
 }
 
 /**
@@ -359,4 +359,19 @@ void assert_arg(mixed condition, int arg_num, string message) {
   message = message || "";
   message += sprintf(" [Arg #%d]", arg_num);
   assert(condition, message);
+}
+
+mixed pipe(mixed result, function *funcs...) {
+  if(sizeof(funcs) < 1)
+    return evaluate(result);
+
+  assert(
+    every(funcs, (: valid_function :)),
+    "Pipe requires every element to be a function after the initial."
+  );
+
+  foreach(function f in funcs)
+    result = f(result);
+
+  return result;
 }

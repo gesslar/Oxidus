@@ -128,8 +128,11 @@ private mixed process_loot_item(mixed item, object tp, object source) {
   int size, index;
   mixed selected;
 
-  if(valid_function(item))
-    return process_loot_item((*item)(tp, source), tp, source);
+  if(valid_function(item)) {
+    function f = item;
+
+    return process_loot_item(f(tp, source), tp, source);
+  }
 
   if(pointerp(item)) {
     size = sizeof(item);

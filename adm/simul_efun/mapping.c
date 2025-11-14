@@ -39,8 +39,10 @@ string pretty_map(mapping map) {
  */
 mixed find_key(mapping map, mixed value) {
   if(valid_function(value)) {
+    function f = value;
+
     foreach(mixed key, mixed val in map) {
-      if((*value)(val,key,map))
+      if(f(val,key,map))
         return key;
     }
   } else {
@@ -78,8 +80,10 @@ mixed *find_keys(mapping map, mixed value) {
   mixed *result = allocate(0);
 
   if(valid_function(value)) {
+    function f = value;
+
     foreach(mixed key, mixed val in map) {
-      if((*value)(val,key,map))
+      if(f(val,key,map))
         push(ref result, key);
     }
   } else {

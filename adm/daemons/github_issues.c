@@ -158,7 +158,9 @@ void execute_callback(mapping request, mapping response) {
                     _log(2, "Invalid caller or callback function: %O %O", request["caller"], request["callback"]);
                 }
             } else if(valid_function(request["callback"])) {
-                (*request["callback"])(response);
+              function f = request["callback"];
+
+              f(response);
             } else {
                 _log(2, "Invalid callback function: %O", request["callback"]);
             }
@@ -204,7 +206,7 @@ private nomask void process_next(string *files) {
 
     if(!file_exists(file)) {
         if(sizeof(files) > 1)
-            (*schedule_next)(files[1..]);
+            schedule_next(files[1..]);
         else
             return;
     }
@@ -213,14 +215,14 @@ private nomask void process_next(string *files) {
     if(err) {
         _log(2, "Error reading request file %s: %O", file, err);
         if(sizeof(files) > 1)
-            (*schedule_next)(files[1..]);
+            schedule_next(files[1..]);
         return;
     }
 
     if(!mapp(request)) {
         _log(2, "Invalid request in /data/github/issues/pending/%s", file);
         if(sizeof(files) > 1)
-            (*schedule_next)(files[1..]);
+            schedule_next(files[1..]);
         return;
     }
 
@@ -260,7 +262,7 @@ private nomask void process_next(string *files) {
     else {
         rm("/data/github/issues/pending/" + file);
         if(sizeof(files) > 1)
-            (*schedule_next)(files[1..]);
+            schedule_next(files[1..]);
         _log(2, "Request resubmitted for /data/github/issues/pending/%s", file);
     }
 }

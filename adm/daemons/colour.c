@@ -156,6 +156,9 @@ public string substitute_colour(string text, string mode) {
   int *matches;
   int sz;
 
+  if(!text)
+    return text;
+
   parts = pcre_assoc(text, ({COLOUR_REGEX}), ({ 1 }), 0);
   tags = parts[0];
   matches = parts[1];
