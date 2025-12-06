@@ -37,7 +37,7 @@ mixed main(object caller, string arguments) {
 
     _info(action[0]);
 
-    result = catch((*action[1])());
+    result = catch(action[1]());
     if(result)
       err += result;
   }

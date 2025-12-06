@@ -139,7 +139,7 @@ string query_extra_short(string id) {
     extra_short = ([ ]);
 
   if(valid_function(extra_short[id]))
-    result = (*extra_short[id])();
+    result = extra_short[id]();
 
   if(!stringp(result))
     result = 0;
@@ -189,7 +189,7 @@ string query_extra_long(string id) {
     extra_long = ([ ]);
 
   if(valid_function(extra_long[id]))
-    result = (*extra_long[id])();
+    result = extra_long[id]();
 
   if(!stringp(result))
     result = 0;

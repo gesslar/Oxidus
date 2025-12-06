@@ -18,8 +18,10 @@
 
 inherit CLASS_STORAGE;
 
-private nomask void store();
 private nomask void destructing();
+private nomask mixed cmd_list(object tp, string arg);
+private nomask mixed cmd_store(object tp, string arg);
+private nomask mixed cmd_take(object tp, string arg);
 
 private class StorageOptions storage_options;
 
@@ -30,11 +32,11 @@ private class StorageOptions storage_options;
  * and sets up object cleanup on destruction.
  */
 void init_storage_room() {
-  add_command("list", "cmd_list");
-  add_command("store", "cmd_store");
-  add_command("take", "cmd_take");
+  add_command("list", cmd_list);
+  add_command("store", cmd_store);
+  add_command("take", cmd_take);
 
-  add_destruct((: destructing :));
+  add_destruct(destructing);
 }
 
 /**

@@ -150,7 +150,7 @@ void init_commands() {
  */
 mixed evaluate_command(object user, string command, string arg) {
   if(stringp(_commands[command]))
-    return call_other(this_object(), action, user, arg);
+    return call_other(this_object(), command, user, arg);
 
   if(!valid_function(_commands[command]))
     return null;

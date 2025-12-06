@@ -343,8 +343,6 @@ varargs void log_file(string file, string msg, mixed arg...) {
     return;
 
   source = log_dir() + file;
-  write_file("data/source", source+"\n");
-  write_file("data/source", call_trace(1));
   size = file_size(source);
 
   if(size == -2)

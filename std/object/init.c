@@ -39,7 +39,7 @@ void event_init(object prev, object ob) {
   sz = sizeof(_inits);
   for(int i = 0; i < sz; i++) {
     if(valid_function(_inits[i]))
-      catch((*_inits[i])(ob));
+      catch(_inits[i](ob));
     else
       catch(call_other(this_object(), _inits[i], ob));
   }
