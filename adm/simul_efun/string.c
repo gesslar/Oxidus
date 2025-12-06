@@ -555,3 +555,51 @@ varargs int is_numeric(string str, int allow_float: (: 0 :)) {
   else
     return pcre_match(str, "^-?\\d+$");
 }
+
+/**
+ * @simul_efun startsWith
+ * @description Checks if a string starts with a specific substring.
+ * @param {string} str - The string to check.
+ * @param {string} startingString - The substring to check for at the start.
+ * @returns {int} 1 if the string starts with the specified substring, 0 otherwise.
+ * @errors If either argument is not a string.
+ */
+int startsWith(string str, string startingString) {
+  assert_arg(stringp(str), 1, "Bad argument 1 to startsWith");
+  assert_arg(stringp(startingString), 2, "Bad argument 2 to startsWith");
+
+  if(str == startingString)
+    return true;
+
+  int len = strlen(str);
+  int len2 = strlen(startingString);
+
+  if(len2 > len)
+    return false;
+
+  return str[0 .. len2] == startingString;
+}
+
+/**
+ * @simul_efun endsWith
+ * @description Checks if a string ends with a specific substring.
+ * @param {string} str - The string to check.
+ * @param {string} endingString - The substring to check for at the end.
+ * @returns {int} 1 if the string ends with the specified substring, 0 otherwise.
+ * @errors If either argument is not a string.
+ */
+int endsWith(string str, string endingString) {
+  assert_arg(stringp(str), 1, "Bad argument 1 to endsWith");
+  assert_arg(stringp(endingString), 2, "Bad argument 2 to endsWith");
+
+  if(str == endingString)
+    return true;
+
+  int len = strlen(str);
+  int len2 = strlen(endingString);
+
+  if(len2 > len)
+    return false;
+
+  return str[<len2 ..] == endingString;
+}

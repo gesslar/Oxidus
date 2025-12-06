@@ -260,6 +260,8 @@ varargs int pcre_strsrch(string str, string pattern, int start);
 int colourp(string str);
 string all_caps(string str);
 int is_numeric(string str);
+int startsWith(string str, string startingString);
+int endsWith(string str, string endingString);
 
 // File: system.c
 int port();
