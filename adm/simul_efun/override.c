@@ -164,5 +164,5 @@ void debug_message(string str) {
 
   timestamp = strftime("%Y/%m/%d %H:%M:%S", time()) ;
   efun::debug_message(sprintf("%s %s", timestamp, str));
-  log_file("debug.log", sprintf("%s %s\n", timestamp, str));
+  master()->log_file("debug.log", sprintf("%s %s\n", timestamp, str));
 }

@@ -343,12 +343,14 @@ varargs void log_file(string file, string msg, mixed arg...) {
     return;
 
   source = log_dir() + file;
+  write_file("data/source", source+"\n");
+  write_file("data/source", call_trace(1));
   size = file_size(source);
 
   if(size == -2)
     return;
 
-    // Grab the full path and file name from the file
+  // Grab the full path and file name from the file
   matches = dir_file(source);
   if(sizeof(matches) == 2)
     assure_dir(matches[0]);
@@ -358,6 +360,7 @@ varargs void log_file(string file, string msg, mixed arg...) {
 
     reg = "^("+log_dir()+")(.*)?/(.*)(\\.log)?$";
     matches = pcre_extract(source, reg);
+    debug("MATCHES: %O", matches);
     if(sizeof(matches) >= 2) {
       string archive;
       archive = matches[0] + "archive/" + matches[1] + "/";
