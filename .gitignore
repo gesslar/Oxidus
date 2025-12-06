@@ -6,7 +6,7 @@ log
 !/log/.keep
 !/log/*/.keep
 #/doc/autodoc/
-
+.rgignore
 /adm/etc/certs/*
 !/adm/etc/certs/*/.keep
 

@@ -77,8 +77,6 @@ public mixed get_mud_config(string key) {
 public void rehash_config() {
   mapping temp;
 
-  debug_message(call_trace(false));
-
   if(file_exists(DEFAULT_CONFIG)) {
     temp = lpml_decode(read_file(DEFAULT_CONFIG));
 

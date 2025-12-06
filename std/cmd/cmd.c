@@ -81,7 +81,9 @@ string resolve_file(object tp, string arg) {
     file = resolve_path(tp->query_env("cwd"), arg);
   }
 
-  return append(file, ".c");
+  write(file+"\n");
+
+  return file;
 }
 
 string resolve_dir(object tp, string arg) {
