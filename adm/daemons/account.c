@@ -56,19 +56,19 @@ void setup() {
  */
 int create_account(string name, string password) {
   if(!valid_manip(name))
-    return 0;
+    return false;
 
   if(!name || !stringp(name))
-    return 0;
+    return false;
 
   if(!password || !stringp(password))
-    return 0;
+    return false;
 
   if(valid_account(name))
-    return 0;
+    return false;
 
   if(password[0..2] != "$6$")
-    return 0;
+    return false;
 
   name = lower_case(name);
 
@@ -81,7 +81,7 @@ int create_account(string name, string password) {
 
   save_data();
 
-  return 1;
+  return true;
 }
 
 /**
@@ -125,20 +125,20 @@ mapping load_account(string name) {
  */
 string write_account(string name, string key, mixed data) {
   if(!valid_manip(name))
-    return 0;
+    return false;
 
   if(!name || !stringp(name))
-    return 0;
+    return false;
 
   if(!key || !stringp(key))
-    return 0;
+    return false;
 
   if(!data)
-    return 0;
+    return false;
 
   mapping account = load_account(name);
   if(!account)
-    return 0;
+    return false;
 
   account[key] = data;
 
@@ -158,17 +158,17 @@ string write_account(string name, string key, mixed data) {
  */
 mixed read_account(string name, string key) {
   if(!valid_manip(name))
-    return 0;
+    return false;
 
   if(!name || !stringp(name))
-    return 0;
+    return false;
 
   if(!key || !stringp(key))
-    return 0;
+    return false;
 
   mapping account = load_account(name);
   if(!account)
-    return 0;
+    return false;
 
   return account[key];
 }
@@ -189,16 +189,16 @@ int valid_manip(string name) {
   object caller = this_caller();
 
   if(!prev && !caller)
-    return 0;
+    return false;
 
   if(!is_member(query_privs(prev), "admin") &&
      query_privs(prev) != name &&
      base_name(previous_object()) != "/std/modules/gmcp/Char" &&
      (caller && query_privs(caller)) != name
   )
-    return 0;
+    return false;
 
-  return 1;
+  return true;
 }
 
 /**
@@ -211,13 +211,13 @@ int valid_manip(string name) {
  */
 int remove_account(string name) {
   if(!valid_manip(name))
-    return 0;
+    return false;
 
   if(!name || !stringp(name))
-    return 0;
+    return false;
 
   if(!valid_account(name))
-    return 0;
+    return false;
 
   map_delete(accounts, name);
   foreach(string key, string value in reverse) {
@@ -227,7 +227,7 @@ int remove_account(string name) {
 
   save_data();
 
-  return 1;
+  return true;
 }
 
 /**
@@ -254,7 +254,7 @@ int add_character(string account_name, string str) {
 
   mapping account = load_account(account_name);
   if(!account)
-    return 0;
+    return false;
 
   string *characters = account["characters"] || ({});
   characters += ({ str });
@@ -266,7 +266,7 @@ int add_character(string account_name, string str) {
 
   save_data();
 
-  return 1;
+  return true;
 }
 
 /**
@@ -293,7 +293,7 @@ int remove_character(string account_name, string str) {
 
   mapping account = load_account(account_name);
   if(!account)
-    return 0;
+    return false;
 
   string *characters = account["characters"] || ({});
   characters -= ({ str });
@@ -304,7 +304,7 @@ int remove_character(string account_name, string str) {
 
   save_data();
 
-  return 1;
+  return true;
 }
 
 /**
@@ -341,7 +341,7 @@ string *account_characters(string account_name) {
 
   mapping account = load_account(account_name);
   if(!account)
-    return 0;
+    return false;
 
   return account["characters"] || ({});
 }
