@@ -114,25 +114,25 @@ private string resolve_relative_path(string relative_path, string relative_to) {
  * Advances the parse position by one character.
  */
 private void lpml_decode_parse_next_char(mixed* parse) {
-    parse[LPML_DECODE_PARSE_POS]++;
-    parse[LPML_DECODE_PARSE_CHAR]++;
+  parse[LPML_DECODE_PARSE_POS]++;
+  parse[LPML_DECODE_PARSE_CHAR]++;
 }
 
 /**
  * Advances the parse position by the specified number of characters.
  */
 private void lpml_decode_parse_next_chars(mixed* parse, int num) {
-    parse[LPML_DECODE_PARSE_POS] += num;
-    parse[LPML_DECODE_PARSE_CHAR] += num;
+  parse[LPML_DECODE_PARSE_POS] += num;
+  parse[LPML_DECODE_PARSE_CHAR] += num;
 }
 
 /**
  * Advances the parse position to the next line.
  */
 private void lpml_decode_parse_next_line(mixed* parse) {
-    parse[LPML_DECODE_PARSE_POS]++;
-    parse[LPML_DECODE_PARSE_LINE]++;
-    parse[LPML_DECODE_PARSE_CHAR] = 1;
+  parse[LPML_DECODE_PARSE_POS]++;
+  parse[LPML_DECODE_PARSE_LINE]++;
+  parse[LPML_DECODE_PARSE_CHAR] = 1;
 }
 
 /**

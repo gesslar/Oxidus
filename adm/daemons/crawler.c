@@ -31,7 +31,7 @@ private nosave string crawl_start_room;
 
 void setup() {
   crawl_start_room = "/d/village/square";
-  // slot(SIG_SYS_BOOT, "crawl");
+  slot(SIG_SYS_BOOT, "crawl");
 }
 
 void crawl(mixed arg...) {
@@ -164,8 +164,10 @@ object stash_objects(string room_file, object tp) {
 
   if(room = find_object(room_file)) {
     object *all = all_inventory(room);
+
     if(sizeof(all))
       all->move(v);
+
     room->remove();
     room = load_object(room_file);
     all->move(room);

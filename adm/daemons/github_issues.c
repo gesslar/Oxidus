@@ -25,12 +25,12 @@ private nomask void execute_callback(mapping request, mapping response);
 private nomask nosave mapping api_calls = ([ ]);
 
 void setup() {
-    set_log_level(4);
-    set_log_prefix("(GITHUB_ISSUES)");
+  set_log_level(4);
+  set_log_prefix("(GITHUB_ISSUES)");
 
-    assure_dir("/data/github/issues/pending");
+  assure_dir("/data/github/issues/pending");
 
-    process_backlog();
+  process_backlog();
 }
 
 /**
@@ -46,54 +46,54 @@ void setup() {
 */
 
 varargs mixed create_issue(string type, string title, string body, mixed *callback) {
-    string url;
-    mapping request;
-    mapping config = mud_config("GITHUB_REPORTER");
+  mapping config = mud_config("GITHUB_REPORTER");
 
-    if(!stringp(type) || !strlen(type))
-        return "Type must be a valid string";
+  if(!stringp(type) || !strlen(type))
+    return "Type must be a valid string";
 
-    if(member_array(type, config["types"]) == -1)
-        return "Invalid type. Available types: " + implode(config["types"], ", ");
+  if(member_array(type, config["types"]) == -1)
+    return "Invalid type. Available types: " + implode(config["types"], ", ");
 
-    if(!stringp(title))
-        return "Title must be a string";
+  if(!stringp(title))
+    return "Title must be a string";
 
-    if(!stringp(body))
-        return "Body must be a string";
+  if(!stringp(body))
+    return "Body must be a string";
 
-    if(!config["owner"] || !config["repo"] || !config["token"])
-        return "GitHub Issues API not setup in adm/etc/config.json";
+  if(!config["owner"] || !config["repo"] || !config["token"])
+    return "GitHub Issues API not setup in adm/etc/config.json";
 
-    url = sprintf("https://api.github.com/repos/%s/%s/issues",
-        config["owner"], config["repo"]);
-
-    request = http_request(
-        url,
-        "POST",
-        ([
-            "Authorization": sprintf("token %s", config["token"]),
-            "Accept": "application/vnd.github.v3+json",
-            "Content-Type": "application/json; charset=utf-8"
-        ]),
-        json_encode(([
-            "title": title,
-            "body": "```\n" + body + "\n```\n",
-            "labels": ({ type })
-        ])),
+  string url = sprintf(
+      "https://api.github.com/repos/%s/%s/issues",
+      config["owner"], config["repo"]
     );
 
-    api_calls[request["start_time"]] = ([
-        "type" : "create",
-        "label" : type,
-        "title" : title,
-        "body" : body,
-        "callback" : callback,
-        "caller" : previous_object(),
-        "request" : request
-    ]);
+  mapping request = http_request(
+    url,
+    "POST",
+    ([
+      "Authorization": sprintf("token %s", config["token"]),
+      "Accept": "application/vnd.github.v3+json",
+      "Content-Type": "application/json; charset=utf-8"
+    ]),
+    json_encode(([
+      "title": title,
+      "body": "```\n" + body + "\n```\n",
+      "labels": ({ type })
+    ])),
+  );
 
-    return mapp(request) ? 1 : 0;
+  api_calls[request["start_time"]] = ([
+    "type" : "create",
+    "label" : type,
+    "title" : title,
+    "body" : body,
+    "callback" : callback,
+    "caller" : previous_object(),
+    "request" : request
+  ]);
+
+  return mapp(request) ? 1 : 0;
 }
 
 /**
@@ -102,42 +102,36 @@ varargs mixed create_issue(string type, string title, string body, mixed *callba
  * @param {mapping} response - The response from the GitHub API
 */
 void http_handle_shutdown(mapping response) {
-    mapping request;
-    mixed body, type;
-    int request_id;
-    mixed err;
+  mixed body = response["response"]["body"];
+  int request_id = response["request"]["start_time"];
+  mapping request;
+  if(!request = api_calls[request_id]) {
+    _log(2, "No request found for id %d", request_id);
+    return;
+  }
 
-    body = response["response"]["body"];
+  map_delete(api_calls, request_id);
 
-    request_id = response["request"]["start_time"];
-    if(!request = api_calls[request_id]) {
-        _log(2, "No request found for id %d", request_id);
-        return;
-    }
-    map_delete(api_calls, request_id);
+  if(response["response"]["status"]["code"] != 201) {
+    string file;
+    _log(2, "Request error: %d %s\nO",
+      response["response"]["status"]["code"],
+      response["response"]["status"]["message"],
+      body
+    );
+    file = time_ns() + ".txt";
+    write_file("/data/github/issues/pending/" + file, json_encode(request));
+    _log(2, "Request saved to /data/github/pending/%s", file);
+    return;
+  }
 
-    if(response["response"]["status"]["code"] != 201) {
-        string file;
-        _log(2, "Request error: %d %s\nO",
-            response["response"]["status"]["code"],
-            response["response"]["status"]["message"],
-            body
-        );
-        file = time_ns() + ".txt";
-        write_file("/data/github/issues/pending/" + file, json_encode(request));
-        _log(2, "Request saved to /data/github/pending/%s", file);
-        return;
-    }
+  _log(2, "Content-Type: %O", response["response"]["headers"]["content-type"]);
 
-    _log(2, "Content-Type: %O", response["response"]["headers"]["content-type"]);
+  body = parse_body(body, response["response"]["headers"]["content-type"]);
 
-    body = parse_body(body, response["response"]["headers"]["content-type"]);
-
-    // _log(2, "Body:\n%O", body);
-
-    err = catch (call_back(request["callback"], response["response"]["status"]));
-    if(err)
-        _log(2, "Error calling callback: %O", err);
+  string err = catch (call_back(request["callback"], response["response"]["status"]));
+  if(err)
+    _log(2, "Error calling callback: %O", err);
 }
 // TODO: fix up to use assemble_call_back and call_back
 /**
@@ -147,28 +141,26 @@ void http_handle_shutdown(mapping response) {
  * @param {mapping} response - The response from the GitHub API
 */
 void execute_callback(mapping request, mapping response) {
-    mixed err;
-
-    err = catch {
-        if(request["callback"]) {
-            if(stringp(request["callback"]) && request["callback"] != "RESUBMIT") {
-                if(objectp(request["caller"]) && function_exists(request["callback"], request["caller"])) {
-                    call_other(request["caller"], request["callback"], response);
-                } else {
-                    _log(2, "Invalid caller or callback function: %O %O", request["caller"], request["callback"]);
-                }
-            } else if(valid_function(request["callback"])) {
-              function f = request["callback"];
-
-              f(response);
-            } else {
-                _log(2, "Invalid callback function: %O", request["callback"]);
-            }
+  string err = catch {
+    if(request["callback"]) {
+      if(stringp(request["callback"]) && request["callback"] != "RESUBMIT") {
+        if(objectp(request["caller"]) && function_exists(request["callback"], request["caller"])) {
+          call_other(request["caller"], request["callback"], response);
+        } else {
+          _log(2, "Invalid caller or callback function: %O %O", request["caller"], request["callback"]);
         }
-    };
+      } else if(valid_function(request["callback"])) {
+        function f = request["callback"];
 
-    if(err)
-        _log(2, "Error calling callback: %O", err);
+        f(response);
+      } else {
+        _log(2, "Invalid callback function: %O", request["callback"]);
+      }
+    }
+  };
+
+  if(err)
+    _log(2, "Error calling callback: %O", err);
 }
 
 /**
@@ -179,13 +171,12 @@ void execute_callback(mapping request, mapping response) {
  *          process_next() to process each request.
 */
 public nomask void process_backlog() {
-    string *files;
+  string *files = get_dir("/data/github/issues/pending/*.txt");
 
-    files = get_dir("/data/github/issues/pending/*.txt");
-    if(!sizeof(files))
-        return;
+  if(!sizeof(files))
+      return;
 
-    process_next(files);
+  process_next(files);
 }
 
 /**
@@ -194,77 +185,80 @@ public nomask void process_backlog() {
  * @param {string[]} files - The list of files remaining in the backlog to process
 */
 private nomask void process_next(string *files) {
-    string file;
-    mapping request;
-    mixed err;
-    function schedule_next = (: call_out_walltime("process_next", 5.0, $1) :);
+  function schedule_next = (: call_out_walltime("process_next", 5.0, $1) :);
 
-    if(!sizeof(files))
-        return;
+  if(!sizeof(files))
+    return;
 
-    file = files[0];
+  string file = files[0];
 
-    if(!file_exists(file)) {
-        if(sizeof(files) > 1)
-            schedule_next(files[1..]);
-        else
-            return;
+  if(!file_exists(file)) {
+    if(sizeof(files) > 1)
+      schedule_next(files[1..]);
+    else
+    return;
+}
+
+  mapping request;
+  string err = catch(request = json_decode(read_file("/data/github/issues/pending/" + file)));
+  if(err) {
+    _log(2, "Error reading request file %s: %O", file, err);
+
+    if(sizeof(files) > 1)
+      schedule_next(files[1..]);
+
+    return;
+  }
+
+  if(!mapp(request)) {
+    _log(2, "Invalid request in /data/github/issues/pending/%s", file);
+
+    if(sizeof(files) > 1)
+      schedule_next(files[1..]);
+
+    return;
+  }
+
+  if(!mapp(request["request"])) {
+    _log(2, "Invalid request in /data/github/issues/pending/%s", file);
+    return;
+  }
+
+  _log(2, "Processing request from /data/github/issues/pending/%s", file);
+  _log(2, "Request: %O", request);
+  _log(2, "Resubmitting request from /data/github/issues/pending/%s", file);
+
+  // Do appropriate function based on its type
+  err = catch {
+    switch(request["type"]) {
+      case "create": {
+        mixed *new_request = ({
+          request["label"],
+          request["title"],
+          request["body"],
+          request["callback"]
+        });
+
+        create_issue(new_request...);
+        _log(2, "Submitting create issue request: %O", new_request);
+        break;
+      }
+      default:
+        _log(2, "Invalid request type: %s", request["type"]);
+        break;
     }
+  };
 
-    err = catch(request = json_decode(read_file("/data/github/issues/pending/" + file)));
-    if(err) {
-        _log(2, "Error reading request file %s: %O", file, err);
-        if(sizeof(files) > 1)
-            schedule_next(files[1..]);
-        return;
-    }
+  if(err) {
+      _log(2, "Error sending request: %O", err);
+  } else {
+    rm("/data/github/issues/pending/" + file);
 
-    if(!mapp(request)) {
-        _log(2, "Invalid request in /data/github/issues/pending/%s", file);
-        if(sizeof(files) > 1)
-            schedule_next(files[1..]);
-        return;
-    }
+    if(sizeof(files) > 1)
+      schedule_next(files[1..]);
 
-    if(!mapp(request["request"])) {
-        _log(2, "Invalid request in /data/github/issues/pending/%s", file);
-        return;
-    }
-
-    _log(2, "Processing request from /data/github/issues/pending/%s", file);
-
-    _log(2, "Request: %O", request);
-
-    _log(2, "Resubmitting request from /data/github/issues/pending/%s", file);
-
-    // Do appropriate function based on its type
-    err = catch {
-        switch(request["type"]) {
-            case "create": {
-                mixed *new_request = ({
-                    request["label"],
-                    request["title"],
-                    request["body"],
-                    request["callback"]
-                });
-                create_issue(new_request...);
-                _log(2, "Submitting create issue request: %O", new_request);
-                break;
-            }
-            default:
-                _log(2, "Invalid request type: %s", request["type"]);
-                break;
-        }
-    };
-
-    if(err)
-        _log(2, "Error sending request: %O", err);
-    else {
-        rm("/data/github/issues/pending/" + file);
-        if(sizeof(files) > 1)
-            schedule_next(files[1..]);
-        _log(2, "Request resubmitted for /data/github/issues/pending/%s", file);
-    }
+    _log(2, "Request resubmitted for /data/github/issues/pending/%s", file);
+  }
 }
 /**
  * @function parse_time
@@ -273,20 +267,17 @@ private nomask void process_next(string *files) {
  * @returns {int} - The epoch time
  */
 private nomask int parse_time(string datetime) {
-    int epoch_time;
-    mixed err;
-
     // Convert the date-time string to a time structure using strptime
-    err = catch(epoch_time = strptime("%Y-%m-%dT%H:%M:%SZ", datetime));
-    if(err) {
-        _log(0, "Error parsing date-time string %s: %O", datetime, err);
-        return -1;
-    }
+  int epoch_time;
+  string err = catch(epoch_time = strptime("%Y-%m-%dT%H:%M:%SZ", datetime));
+  if(err) {
+    _log(0, "Error parsing date-time string %s: %O", datetime, err);
+    return -1;
+  }
 
-    // If strptime returns -1, it means the date-time string is invalid
-    if(!epoch_time) {
-        error("Invalid date-time string");
-    }
+  // If strptime returns -1, it means the date-time string is invalid
+  if(!epoch_time)
+    error("Invalid date-time string");
 
-    return epoch_time;
+  return epoch_time;
 }

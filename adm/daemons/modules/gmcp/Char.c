@@ -20,9 +20,7 @@ inherit STD_DAEMON;
 //
 // The labels and values are all found in /include/gmcp_defines.h
 void StatusVars(object who, mapping payload) {
-  mapping data;
-
-  data = payload || ([
+  mapping data = payload || ([
     GMCP_LBL_CHAR_STATUS_NAME        : GMCP_DIS_CHAR_STATUS_NAME,
     GMCP_LBL_CHAR_STATUS_FILL        : GMCP_DIS_CHAR_STATUS_FILL,
     GMCP_LBL_CHAR_STATUS_CAPACITY    : GMCP_DIS_CHAR_STATUS_CAPACITY,
@@ -35,12 +33,11 @@ void StatusVars(object who, mapping payload) {
 }
 
 void Status(object who, mapping payload) {
-  mapping data;
   mapping wealth = who->query_all_wealth();
 
   wealth = map(wealth, (: sprintf("%d", $2) :));
 
-  data = payload || ([
+  mapping data = payload || ([
     GMCP_LBL_CHAR_STATUS_NAME        : who->query_name(),
     GMCP_LBL_CHAR_STATUS_FILL        : sprintf("%d", who->query_fill()),
     GMCP_LBL_CHAR_STATUS_CAPACITY    : sprintf("%d", who->query_capacity()),
@@ -53,9 +50,7 @@ void Status(object who, mapping payload) {
 }
 
 void Vitals(object who, mapping payload) {
-  mapping data;
-
-  data = payload || ([
+  mapping data = payload || ([
     GMCP_LBL_CHAR_VITALS_HP     : sprintf("%.2f", who->query_hp()),
     GMCP_LBL_CHAR_VITALS_MAX_HP : sprintf("%.2f", who->query_max_hp()),
     GMCP_LBL_CHAR_VITALS_SP     : sprintf("%.2f", who->query_sp()),

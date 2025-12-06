@@ -19,11 +19,9 @@ inherit M_LOG;
 private nomask int boot_number;
 
 void setup() {
-  int result;
-
   set_log_level(0);
   set_persistent(1);
-  result = slot(SIG_SYS_BOOT, "boot");
+  slot(SIG_SYS_BOOT, "boot");
 }
 
 /**

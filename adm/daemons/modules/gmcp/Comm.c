@@ -23,8 +23,7 @@ inherit STD_DAEMON;
 
 varargs void Channel(object who, string sub, mapping data) {
   switch(sub) {
-    case "Text":
-
+    case "Text": {
       assert((: mapp($(data)) && !nullp($(data)["channel"]) && !nullp($(data)["text"]) :));
 
       if(nullp(data["talker"]))
@@ -32,5 +31,6 @@ varargs void Channel(object who, string sub, mapping data) {
 
       who->do_gmcp(GMCP_PKG_COMM_CHANNEL_TEXT, data);
       break;
+    }
   }
 }
