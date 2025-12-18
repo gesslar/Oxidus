@@ -22,9 +22,9 @@ inherit STD_DAEMON;
 
 // Forward declarations
 private nomask void invalidate_slots();
-public nomask int register_slot(int sig, object ob, string func);
-public nomask int unregister_slot(int sig, object ob);
-public nomask void dispatch_signal(int sig, mixed arg...);
+public nomask int register_slot(string sig, object ob, string func);
+public nomask int unregister_slot(string sig, object ob);
+public nomask void dispatch_signal(string sig, mixed arg...);
 
 private nosave mapping slots = ([]);
 
@@ -47,17 +47,17 @@ void setup() {
 /**
  * Registers an object's function to receive a specific signal.
  *
- * @param {int} sig - The signal type to register for
+ * @param {string} sig - The string signal identifier to register for
  * @param {object} ob - The object to receive the signal
  * @param {string} func - The function to call when signal is received
  * @returns {int} Status code indicating success or failure reason
  */
-public nomask int register_slot(int sig, object ob, string func) {
+public nomask int register_slot(string sig, object ob, string func) {
   if(previous_object() != simul_efun())
     return SIG_SLOT_INVALID_CALLER;
 
-  if(nullp(sig))
-   return SIG_MISSING_SIGNAL;
+  if(nullp(sig) || !stringp(sig))
+    return SIG_MISSING_SIGNAL;
 
   if(nullp(ob))
     return SIG_MISSING_OBJECT;
@@ -82,17 +82,17 @@ public nomask int register_slot(int sig, object ob, string func) {
 /**
  * Unregisters an object from receiving a specific signal.
  *
- * @param {int} sig - The signal type to unregister from
+ * @param {mixed} sig - The signal identifier to unregister from
  * @param {object} ob - The object to unregister
  * @returns {int} Status code indicating success or failure reason
  */
-public nomask int unregister_slot(int sig, object ob) {
+public nomask int unregister_slot(string sig, object ob) {
   mapping sig_slot;
 
   if(previous_object() != simul_efun())
     return SIG_SLOT_INVALID_CALLER;
 
-  if(nullp(sig))
+  if(nullp(sig) || !stringp(sig))
     return SIG_MISSING_SIGNAL;
 
   if(nullp(ob))
@@ -102,10 +102,10 @@ public nomask int unregister_slot(int sig, object ob) {
     return SIG_INVALID_OBJECT;
 
   sig_slot = slots[sig];
-  if(of(ob, sig_slot))
+  if(mapp(sig_slot) && of(ob, sig_slot))
     map_delete(sig_slot, ob);
 
-  if(!sizeof(sig_slot))
+  if(!mapp(sig_slot) || !sizeof(sig_slot))
     map_delete(slots, sig);
   else
     slots[sig] = sig_slot;
@@ -147,15 +147,19 @@ private nomask void invalidate_slots() {
  * Errors in individual handlers are caught and logged without affecting
  * other handlers.
  *
- * @param {int} sig - The signal to dispatch
+ * @param {mixed} sig - The signal identifier to dispatch
  * @param {mixed} arg... - Arguments to pass to the signal handlers
  */
-public nomask void dispatch_signal(int sig, mixed arg...) {
-  mapping sig_slot = slots[sig];
+public nomask void dispatch_signal(string sig, mixed arg...) {
+  mapping sig_slot;
 
   if(previous_object() != simul_efun())
     return;
 
+  if(nullp(sig) || !stringp(sig))
+    return;
+
+  sig_slot = slots[sig];
   if(!mapp(sig_slot))
     return;
 

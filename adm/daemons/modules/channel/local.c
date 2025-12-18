@@ -8,128 +8,117 @@
 
 //Last edited by Parthenon on August 6th, 2006
 
-inherit STD_DAEMON;
-
-string *ch_list = ({"admin", "wiz", "dev", "chat"});
-mapping history = ([]);
-private nosave string module_name = query_file_name(this_object());
-
-void setup() {
-  set_persistent();
-  set_no_clean(1);
-}
-
-void post_setup_1() {
-  int i;
-
-  CHAN_D->register_module(module_name, file_name());
-
-  for(i = 0; i < sizeof(ch_list); i++) {
-    CHAN_D->register_channel(module_name, ch_list[i]);
-
-    if(history[ch_list[i]] == 0)
-      history[ch_list[i]] = ({ });
-  }
-
-  save_data();
-}
+inherit D_MOD_CHANNEL;
 
 int rec_msg(string chan, string usr, string msg) {
   object ob;
   string real_message;
   int num_lines;
 
-  if(sscanf(msg, "/last %d", num_lines) == 1) {
-    if(num_lines > sizeof(history[chan]))
-      num_lines = sizeof(history[chan]);
+  string command, arg;
+  if(sscanf(msg, "/%(\\w+) %s", command, arg) >= 1) {
+    string commandFunction = "command"+capitalize(command);
+    if(!has(this_object(), commandFunction))
+      return _error("No such command '%s'.", commandFunction);
 
-    ob = find_player(usr);
-
-    if(!sizeof(history[chan])) {
-      tell(ob, "LocalNet: Channel " + chan + " has no history yet.\n");
-    } else {
-      foreach(string hist_line in history[chan][(sizeof(history[chan]) - num_lines)..(sizeof(history[chan]) - 1)]) {
-        tell(ob, hist_line);
-      }
-
-      return 1;
-    }
-  } else {
-    switch(msg) { /* We could do some neat stuff here! */
-      case "/last" : {
-        ob = find_player(usr);
-
-        if(!sizeof(history[chan])) {
-            tell(ob, "LocalNet: Channel " + chan + " has no history yet.\n");
-        } else {
-          foreach(string hist_line in history[chan][(sizeof(history[chan]) - 15)..(sizeof(history[chan]) - 1)]) {
-            tell(ob, hist_line);
-          }
-
-          return 1;
-        }
-
-        break;
-      }
-
-      case "/all" : {
-        ob = find_player(usr);
-
-        if(!sizeof(history[chan])) {
-          tell(ob, "LocalNet: Channel " + chan + " has no history yet.\n");
-        } else {
-          foreach(string hist_line in history[chan][(sizeof(history[chan]) - 50)..(sizeof(history[chan]) - 1)]) {
-            tell(ob, hist_line);
-          }
-
-          return 1;
-        }
-
-        break;
-      }
-    }
+    return call_if(this_object(), commandFunction, this_player(), chan, arg);
   }
 
-  if(msg[0..0] == ":") {
-    msg = msg[1..<1];
-    real_message = sprintf(" %s", msg);
-  } else {
-    real_message = sprintf(": %s", msg);
-  }
 
-  switch(chan) {
-    case "admin" : {
-      CHAN_D->rec_msg(chan, lower_case(usr), "[" + capitalize(chan) + "] " + capitalize(usr) + real_message + "\n");
-      history[chan] += ({ ldate(time(),1) +" "+ltime() + " [" + capitalize(chan) + "] " + capitalize(usr) + real_message + "\n" });
-      break;
-    }
+  // if(sscanf(msg, "/last %d", num_lines) == 1) {
+  //   if(num_lines > sizeof(history[chan]))
+  //     num_lines = sizeof(history[chan]);
 
-    case "wiz" : {
-      CHAN_D->rec_msg(chan, lower_case(usr), "[" + capitalize(chan) + "] " + capitalize(usr) + real_message + "\n");
-      history[chan] += ({ ldate(time(),1) +" "+ltime() + " [" + capitalize(chan) + "] " + capitalize(usr) + real_message + "\n" });
-      break;
-    }
+  //   ob = find_player(usr);
 
-    case "gossip" : {
-      CHAN_D->rec_msg(chan, lower_case(usr), "[" + capitalize(chan) + "] " + capitalize(usr) + real_message + "\n");
-      history[chan] += ({ ldate(time(),1) +" "+ltime() + " [" + capitalize(chan) + "] " + capitalize(usr) + real_message + "\n" });
-      break;
-    }
+  //   if(!sizeof(history[chan])) {
+  //     tell(ob, "LocalNet: Channel " + chan + " has no history yet.\n");
+  //   } else {
+  //     string *chanHistory = history[chan];
+  //     int sz = sizeof(chanHistory);
+  //     string *chunk = chanHistory[sz-num_lines .. sz - 1];
+  //     foreach(string hist_line in chunk) {
+  //       tell(ob, hist_line);
+  //     }
 
-    case "chat" : {
-      CHAN_D->rec_msg(chan, lower_case(usr), "[" + capitalize(chan) + "] " + capitalize(usr) + real_message + "\n");
-      history[chan] += ({ ldate(time(),1) +" "+ltime() + " [" + capitalize(chan) + "] " + capitalize(usr) + real_message + "\n" });
-      break;
-    }
+  //     return 1;
+  //   }
+  // } else {
+  //   switch(msg) { /* We could do some neat stuff here! */
+  //     case "/last" : {
+  //       ob = find_player(usr);
 
-    case "dev" : {
-      CHAN_D->rec_msg(chan, lower_case(usr), "[" + capitalize(chan) + "] " + capitalize(usr) + real_message + "\n");
-      history[chan] += ({ ldate(time(),1) +" "+ltime() + " [" + capitalize(chan) + "] " + capitalize(usr) + real_message + "\n" });
-      break;
-    }
-  }
+  //       if(!sizeof(history[chan])) {
+  //           tell(ob, "LocalNet: Channel " + chan + " has no history yet.\n");
+  //       } else {
+  //         foreach(string hist_line in history[chan][(sizeof(history[chan]) - 15)..(sizeof(history[chan]) - 1)]) {
+  //           tell(ob, hist_line);
+  //         }
 
-  save_data();
+  //         return 1;
+  //       }
+
+  //       break;
+  //     }
+
+  //     case "/all" : {
+  //       ob = find_player(usr);
+
+  //       if(!sizeof(history[chan])) {
+  //         tell(ob, "LocalNet: Channel " + chan + " has no history yet.\n");
+  //       } else {
+  //         foreach(string hist_line in history[chan][(sizeof(history[chan]) - 50)..(sizeof(history[chan]) - 1)]) {
+  //           tell(ob, hist_line);
+  //         }
+
+  //         return 1;
+  //       }
+
+  //       break;
+  //     }
+  //   }
+  // }
+
+  // if(msg[0..0] == ":") {
+  //   msg = msg[1..<1];
+  //   real_message = sprintf(" %s", msg);
+  // } else {
+  //   real_message = sprintf(": %s", msg);
+  // }
+
+  // switch(chan) {
+  //   case "admin" : {
+  //     CHAN_D->rec_msg(chan, lower_case(usr), "[" + capitalize(chan) + "] " + capitalize(usr) + real_message + "\n");
+  //     history[chan] += ({ ldate(time(),1) +" "+ltime() + " [" + capitalize(chan) + "] " + capitalize(usr) + real_message + "\n" });
+  //     break;
+  //   }
+
+  //   case "wiz" : {
+  //     CHAN_D->rec_msg(chan, lower_case(usr), "[" + capitalize(chan) + "] " + capitalize(usr) + real_message + "\n");
+  //     history[chan] += ({ ldate(time(),1) +" "+ltime() + " [" + capitalize(chan) + "] " + capitalize(usr) + real_message + "\n" });
+  //     break;
+  //   }
+
+  //   case "gossip" : {
+  //     CHAN_D->rec_msg(chan, lower_case(usr), "[" + capitalize(chan) + "] " + capitalize(usr) + real_message + "\n");
+  //     history[chan] += ({ ldate(time(),1) +" "+ltime() + " [" + capitalize(chan) + "] " + capitalize(usr) + real_message + "\n" });
+  //     break;
+  //   }
+
+  //   case "chat" : {
+  //     CHAN_D->rec_msg(chan, lower_case(usr), "[" + capitalize(chan) + "] " + capitalize(usr) + real_message + "\n");
+  //     history[chan] += ({ ldate(time(),1) +" "+ltime() + " [" + capitalize(chan) + "] " + capitalize(usr) + real_message + "\n" });
+  //     break;
+  //   }
+
+  //   case "dev" : {
+  //     CHAN_D->rec_msg(chan, lower_case(usr), "[" + capitalize(chan) + "] " + capitalize(usr) + real_message + "\n");
+  //     history[chan] += ({ ldate(time(),1) +" "+ltime() + " [" + capitalize(chan) + "] " + capitalize(usr) + real_message + "\n" });
+  //     break;
+  //   }
+  // }
+
+  // save_data();
 
   return 1;
 }

@@ -123,7 +123,7 @@ int touch(string file);
 string *dir_file(string path);
 string *explode_file(string file);
 string file_owner(string file);
-string query_file_name(object ob);
+varargs string query_file_name(object ob);
 varargs string *valid_dir_file(string path, int file_too);
 varargs string tail(string path, int line_count);
 varargs string temp_file(mixed arg);
@@ -236,9 +236,9 @@ int devp(mixed user);
 int wizardp(mixed user);
 
 // File: signal.c
-void emit(int sig, mixed arg...);
-int slot(int sig, string func);
-int unslot(int sig);
+varargs void emit(string sig, mixed arg...);
+int slot(string sig, string func);
+int unslot(string sig);
 
 // File: socket.c
 string dump_socket_status();
@@ -255,13 +255,14 @@ varargs mixed from_string(string str, int flag);
 string stringify(mixed val);
 string add_commas(mixed number);
 string reverse_string(string str);
-string reverse_strsrch(string str, string sub, int start);
+int reverse_strsrch(string str, string sub, int start);
 varargs int pcre_strsrch(string str, string pattern, int start);
 int colourp(string str);
 string all_caps(string str);
 int is_numeric(string str);
 int startsWith(string str, string startingString);
 int endsWith(string str, string endingString);
+string sanitizeRegex(string msg);
 
 // File: system.c
 int port();

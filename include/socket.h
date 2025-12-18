@@ -1,8 +1,11 @@
-#ifndef __SOCKET_H__
-#define __SOCKET_H__
+/*
+ * socket.h -- socket mode and option constants for LPC
+ */
 
-#include <socket_err.h>
+#ifndef _SOCKET_H_
+#define _SOCKET_H_
 
+/* Socket modes */
 #define MUD 0
 #define STREAM 1
 #define DATAGRAM 2
@@ -11,18 +14,10 @@
 #define STREAM_TLS 5
 #define STREAM_TLS_BINARY 6
 
-#define SOCKET_STREAM 1
-#define SOCKET_STREAM_LISTEN 2
-#define SOCKET_DATAGRAM 3
-#define SOCKET_MUD 4
-#define SOCKET_MUD_LISTEN 5
-#define SOCKET_ACQUIRE 6
-#define SOCKET_STREAM_TLS 7
-#define SOCKET_STREAM_TLS_BINARY 8
-
+/* Socket options */
 #define SO_TLS_VERIFY_PEER 1
 #define SO_TLS_SNI_HOSTNAME 2
 #define SO_TLS_CERT 3
 #define SO_TLS_KEY 4
 
-#endif // __SOCKET_H__
+#endif /* _SOCKET_H_ */

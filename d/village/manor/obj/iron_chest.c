@@ -21,8 +21,8 @@ void setup() {
   set_short("an iron chest");
   set_long("This heavy iron chest is built to last, with thick metal walls "
     "and reinforced corners. The lid is secured by a robust iron hasp and "
-    "a heavy-duty lock mechanism. The chest's surface bears a weathered patina, "
-    "though the hinges appear well-oiled and functional. Despite its "
+    "a heavy-duty lock mechanism. The chest's surface bears a weathered "
+    "patina, though the hinges appear well-oiled and functional. Despite its "
     "utilitarian design, there are subtle decorative flourishes worked into "
     "the metalwork.");
   set_mass(50);

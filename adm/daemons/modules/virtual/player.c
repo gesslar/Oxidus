@@ -12,19 +12,25 @@
 
 inherit STD_DAEMON;
 
+void setup() {
+  debug("%O\n", previous_object(-1));
+}
+
 public nomask object compile_object(string file) {
-  string name;
   object ob;
   string e;
   string type = query_file_name();
   string test = sprintf("^/%s/\\w+$", type);
 
+  debug("Loading %O %O", file, test);
+
   if(!pcre_match(file, test))
     return 0;
 
   e = catch(ob = new(STD_PLAYER));
-  if(e) {
+  if(e || !ob) {
     log_file("VIRTUAL", e);
+    debug("Error: :" + e ?? "Unable to instantiate virtual player object.");
     return 0;
   }
 

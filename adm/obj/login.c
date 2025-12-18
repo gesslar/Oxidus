@@ -555,6 +555,7 @@ object create_body(string name) {
   err = catch(body = BODY_D->create_body(name));
   if(err || !body) {
     receive("\nThere was a problem creating your body.\n");
+    debug(err);
     dest_me();
     return 0;
   }

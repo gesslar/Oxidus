@@ -8,16 +8,17 @@
 
 inherit __DIR__ "channel";
 
+int is_allowed(string channel, string name);
+
+void heraldArrival(object user);
+void heraldDeparture(object user);
+
 void setup() {
-  channel_names = ({ "announce" });
+  channel_names = ({ module_name });
 
-  slot(SIG_USER_LOGIN, "announce_login");
-  slot(SIG_USER_LOGOUT, "announce_logoff");
+  slot(SIG_USER_LOGIN, "heraldArrival");
+  slot(SIG_USER_LOGOUT, "heraldDeparture");
   slot(SIG_SYS_CRAWL_COMPLETE, "announce_crawl_complete");
-}
-
-int is_allowed(string channel, string name) {
-  return 1;
 }
 
 int rec_msg(string chan, string usr, string msg) {
@@ -51,7 +52,7 @@ int rec_msg(string chan, string usr, string msg) {
   return 1;
 }
 
-void announce_login(object user) {
+void heraldArrival(object user) {
   string name = capitalize(query_privs(user));
 
   CHAN_D->rec_msg("announce", query_privs(user),
@@ -68,7 +69,7 @@ void announce_login(object user) {
   );
 }
 
-void announce_logoff(object user) {
+void heraldDeparture(object user) {
   string name = capitalize(query_privs(user));
 
   CHAN_D->rec_msg("announce", query_privs(user),

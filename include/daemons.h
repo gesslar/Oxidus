@@ -2,6 +2,7 @@
 #define __DAEMONS_H__
 
 #include <dirs.h>
+#include <modules_daemon.h>
 
 #define ACCOUNT_D       DIR_DAEMONS "account"
 #define ACTION_D        DIR_DAEMONS "action"

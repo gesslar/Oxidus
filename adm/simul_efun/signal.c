@@ -5,31 +5,47 @@
  * @simul_efun emit
  * @description Emit a signal to all objects that have registered a slot for
  *              the signal.
- * @param {int} sig - signal number
- * @param {mixed...} arg - arguments to pass to the signal
+ * @param {string} sig - string signal identifier (use `SIG_*` macros)
+ * @param {mixed...} arg - arguments to pass to the signal handlers
+ * @throws If `sig` is not a string this function calls `error()` and
+ *         thus raises an exception. This enforces use of the `SIG_*`
+ *         defines and avoids silent mismatches.
  */
-void emit(int sig, mixed arg...) {
+void emit(string sig, mixed arg...) {
+    if(!stringp(sig))
+        error("emit(): signal identifier must be a string; use SIG_* macros\n");
+
     catch(SIGNAL_D->dispatch_signal(sig, arg...));
 }
 
 /**
  * Register a slot for a signal.
  *
- * @param {int} sig - signal number
+ * @param {string} sig - string signal identifier (use `SIG_*` macros)
  * @param {string} func - function to call when the signal is emitted
- * @returns {int} `SIG_SLOT_OK` if the slot was registered successfully. See `include/signal.h` for other return values.
+ * @returns {int} `SIG_SLOT_OK` if the slot was registered successfully.
+ * @throws If `sig` is not a string this function calls `error()` and
+ *         raises an exception to loudly indicate incorrect usage.
  */
-int slot(int sig, string func) {
+int slot(string sig, string func) {
+    if(!stringp(sig))
+        error("slot(): signal identifier must be a string; use SIG_* macros\n");
+
     return SIGNAL_D->register_slot(sig, previous_object(), func);
 }
 
 /**
  * @simul_efun unslot
  * @description Unregister a slot for a signal.
- * @param {int} sig - signal number
- * @returns {int} - `SIG_SLOT_OK` if the slot was unregistered successfully. See `include/signal.h` for other return values.
+ * @param {string} sig - string signal identifier (use `SIG_*` macros)
+ * @returns {int} `SIG_SLOT_OK` if the slot was unregistered successfully.
+ * @throws If `sig` is not a string this function calls `error()` and
+ *         raises an exception so incorrect calls fail loudly.
  */
-int unslot(int sig) {
+int unslot(string sig) {
+    if(!stringp(sig))
+        error("unslot(): signal identifier must be a string; use SIG_* macros\n");
+
     return SIGNAL_D->unregister_slot(sig, previous_object());
 }
 

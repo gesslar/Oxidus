@@ -34,10 +34,14 @@ object create_body(string name) {
     type = "player";
 
   string dest = sprintf("/%s/%s", type, name);
+  debug("DEST: " + dest);
 
   /** @type {STD_PLAYER} */
   object body;
   string err = catch(body = load_object(dest));
+
+  debug("ERR: " + err);
+  debug("BODY: %O", body);
 
   if(err)
     return 0;

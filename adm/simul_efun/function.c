@@ -36,6 +36,18 @@ int valid_function(mixed f) {
   return false;
 }
 
+/**
+ * Checks if an object has a specific function defined.
+ *
+ * @param {object} ob - The object to check.
+ * @param {string} functionName - The name of the function to look for.
+ * @returns {string} The program name where the function is defined, or 0 if
+ *                   not found or if ob is not an object.
+ */
+string has(object ob, string functionName) {
+  return objectp(ob) && function_exists(functionName, ob);
+}
+
 private nosave string *traceColours = ({
   "#0099ff",
   "#66ff33",

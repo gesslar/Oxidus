@@ -52,17 +52,16 @@ private nosave int no_gmcp_room_info = 0;
  * Creates a data structure containing all relevant room information
  * including exits, doors, environment, coordinates, and custom data.
  *
- * @param {object} who - The player for whom the GMCP data is being generated
  * @returns {mapping} Mapping with room information
  */
-mapping gmcp_room_info(object who) {
+mapping gmcp_room_info() {
   mapping info = ([ ]);
   string *exit_dirs;
   string *door_dirs;
   mapping exits;
   mapping doors;
   mapping result;
-  mapping gmcp_info = ([ ]);
+  mapping gmcp_info = ([]);
   // string *suppress;
 
   if(no_gmcp_room_info)
@@ -120,9 +119,11 @@ mapping gmcp_room_info(object who) {
  * Environment affects gameplay mechanics like weather effects.
  *
  * @param {string} environment - The environment type
- * @returns {string} The new environment
+ * @returns {void}
  */
-string set_room_environment(string environment) { room_environment = environment; }
+void set_room_environment(string environment) {
+  room_environment = environment;
+}
 
 /**
  * Returns the room's environment setting.
@@ -135,9 +136,11 @@ string query_room_environment() { return room_environment; }
  * Sets the room's color for map display.
  *
  * @param {int} colour - The color value
- * @returns {int} The new color value
+ * @returns {void}
  */
-int set_room_colour(int colour) { room_colour = colour; }
+void set_room_colour(int colour) {
+  room_colour = colour;
+}
 
 /**
  * Returns the room's color setting.
