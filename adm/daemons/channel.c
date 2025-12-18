@@ -12,8 +12,8 @@
 
 inherit STD_DAEMON;
 
-
-/* Last modified by Tacitus on July 5th, 2006 */
+private nosave mapping channels;
+private nosave mapping modules;
 
 int register_module(string name, string path);
 int register_channel(string module_name, string channel_name);
@@ -30,16 +30,12 @@ string *get_modules();
 string *get_tuned(string argument);
 void rec_msg(string channel, string user, string msg);
 
-mapping channels;
-mapping modules;
-
 void setup() {
   string str, err, *arr;
   int i;
   float time;
-  object ob;
 
-  set_no_clean(1);
+  set_no_clean();
 
   channels = ([]);
   modules = ([]);
@@ -50,7 +46,10 @@ void setup() {
     return;
 
   for(i = 0; i < sizeof(arr); i++) {
-    if(ob = find_object(arr[i]))
+    /** @type {STD_DAEMON} */
+    object ob = find_object(arr[i]);
+
+    if(ob)
       ob->remove();
 
     debug("> Loading channel module: %s", arr[i]);

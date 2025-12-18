@@ -26,9 +26,7 @@
  */
 mixed assure_file(string file) {
   string *parts;
-  string *path;
   string dir;
-  int i;
 
   if(nullp(file))
     return "No file specified for assure_file().\n";
@@ -255,17 +253,16 @@ varargs void implode_file(string file, string *lines, int overwrite) {
 /**
  * Gets filename portion of an object's path.
  *
- * @param {object} ob - Object to query, defaults to previous_object()
+ * @param {object} [ob] - Object to query, defaults to previous_object()
  * @returns {string} Base filename without path
  * @errors If no valid object available
  * @example
  * string name = query_file_name(this_object());  // Returns "room.c"
  */
-string query_file_name(object ob) {
+varargs string query_file_name(object ob) {
   string file, *parts;
 
-  if(!objectp(ob))
-    ob = previous_object();
+  ob ??= previous_object();
 
   if(!objectp(ob))
     error("Bad argument 1 to query_file_name().\n");
@@ -336,7 +333,8 @@ string *dir_file(mixed path) {
     error("Bad argument 1 to dir_file().\n");
 
   path = prepend(path, "/");
-  matches = pcre_extract(path, "^(.*/)([^/]+)$");
+  matches = pcre_extract(/** @type {string} */ (path), "^(.*/)([^/]+)$");
+
   if(sizeof(matches) < 2) {
     return ({});
   }
@@ -363,7 +361,6 @@ string *dir_file(mixed path) {
  */
 varargs string *valid_dir_file(string path, int file_too) {
   string *parts;
-  int sz, i;
   string dir = "/";
 
   if(nullp(path))

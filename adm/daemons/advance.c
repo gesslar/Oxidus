@@ -12,7 +12,7 @@
 inherit STD_DAEMON;
 
 // Functions
-int tnl(int level);
+int tnl(float level);
 
 // Variables
 float base_tnl;
@@ -29,6 +29,13 @@ void setup() {
   underlevel_xp_bonus = mud_config("UNDERLEVEL_XP_BONUS");
 }
 
+/**
+ * @function tnl
+ * @description Calculates the total XP needed to reach the next level from the
+ *              current level.
+ * @param {float} level - The current level to calculate TNL for.
+ * @returns {int} - The total XP needed to reach the next level.
+ */
 int tnl(float level) {
   // Ensure level is at least 1.0
   if(level < 1.0)
@@ -38,10 +45,26 @@ int tnl(float level) {
   return to_int(base_tnl * pow(tnl_rate, level - 1.0));
 }
 
+/**
+ * @function can_advance
+ * @description Checks if a character has enough XP to advance to the next level.
+ * @param {int} xp - The current XP amount.
+ * @param {float} level - The current level.
+ * @returns {int} - 1 if the character can advance, 0 otherwise.
+ */
 int can_advance(int xp, float level) {
   return xp >= tnl(level);
 }
 
+/**
+ * @function advance
+ * @description Advances a character to the next level if they have enough XP.
+ *              Deducts the required XP, increments the level, and emits a
+ *              signal.
+ * @param {STD_PLAYER} tp - The player object to advance.
+ * @returns {int} - 1 if the character advanced, 0 if they did not have enough
+ *                  XP.
+ */
 int advance(object tp) {
   int xp = tp->query_xp();
   float level = tp->query_level();
@@ -61,6 +84,14 @@ int advance(object tp) {
   return 1;
 }
 
+/**
+ * @function earn_xp
+ * @description Awards XP to a player and optionally auto-levels them if
+ *              enabled in the mud configuration.
+ * @param {STD_PLAYER} tp - The player object to award XP to.
+ * @param {int} amount - The amount of XP to award.
+ * @returns {int} - Always returns 1.
+ */
 int earn_xp(object tp, int amount) {
   debug("earn_xp: " + amount);
   debug("xp: " + tp->query_xp());
@@ -74,6 +105,16 @@ int earn_xp(object tp, int amount) {
   return 1;
 }
 
+/**
+ * @function kill_xp
+ * @description Calculates and awards XP to a killer for defeating an opponent.
+ *              The XP amount is based on the killed opponent's level with
+ *              variance, and adjusted based on level difference between killer
+ *              and killed.
+ * @param {STD_PLAYER} killer - The object that killed the opponent.
+ * @param {STD_NPC | STD_PLAYER} killed - The object that was killed.
+ * @returns {int} - The amount of XP awarded, or 0 if either object is null.
+ */
 int kill_xp(object killer, object killed) {
   int xp, tnl;
   int variance;

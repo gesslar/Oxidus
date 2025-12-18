@@ -358,7 +358,7 @@ varargs void log_file(string file, string msg, mixed arg...) {
 
     reg = "^("+log_dir()+")(.*)?/(.*)(\\.log)?$";
     matches = pcre_extract(source, reg);
-    debug("MATCHES: %O", matches);
+
     if(sizeof(matches) >= 2) {
       string archive;
       archive = matches[0] + "archive/" + matches[1] + "/";
@@ -372,6 +372,8 @@ varargs void log_file(string file, string msg, mixed arg...) {
     }
   }
 
+  arg = pointerp(arg) ? arg : ({ arg });
+  msg = sanitizeRegex(msg);
   msg = sprintf(msg, arg...);
   msg = append(msg, "\n");
 

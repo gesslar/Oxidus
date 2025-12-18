@@ -37,10 +37,15 @@ inherit STD_DAEMON;
  * For living objects, returns the name. For non-living objects, returns
  * either the name or short description. For strings, returns them unmodified.
  *
- * @param {mixed} x - The item to get a description for
+ * @param {STD_PLAYER|STD_NPC|STD_ITEM|string} x - The item to get a description for
  * @returns {string} The appropriate short description
  */
 private string short(mixed x) {
+  assert(stringp(x) || objectp(x) && (has(x, "query_name") || has(x, "query_name")));
+
+  if(stringp(x))
+    return x;
+
   if(objectp(x)) {
     if(living(x))
       return x->query_name();
@@ -57,7 +62,7 @@ private string short(mixed x) {
  * For objects, returns their short description.
  * For strings, ensures they have an appropriate indefinite article.
  *
- * @param {mixed} x - The object or string to process
+ * @param {STD_PLAYER|STD_NPC|STD_ITEM} x - The object or string to process
  * @returns {string} The description with appropriate article
  */
 string a_short(mixed x) {

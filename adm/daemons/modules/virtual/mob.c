@@ -25,15 +25,14 @@ public nomask object compile_object(string file) {
   { // parse the data and make the monster
     string mob_type = data["type"];
     string object_file = "/std/mobs/%s.c";
-    mixed args;
     object mob;
 
     mob_type = replace_string(mob_type, " ", "_");
-    object_file = sprintf(object_file, mob_type);
+    string target_object_file = sprintf(object_file, mob_type);
     if(!file_exists(object_file))
       return 0;
 
-    e = catch(mob = new(object_file, data));
+    e = catch(mob = new(target_object_file, data));
     if(e) {
       log_file("VIRTUAL", e);
       if(mob)

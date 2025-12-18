@@ -603,3 +603,13 @@ int endsWith(string str, string endingString) {
 
   return str[<len2 ..] == endingString;
 }
+
+private nosave nomask string percentPattern = "(?<!%)(%)(?!%)";
+private nosave nomask string *percentReplacement = ({"%%"});
+
+string sanitizeRegex(string msg) {
+  while(pcre_match(msg, percentPattern))
+    msg = pcre_replace(msg, percentPattern, percentReplacement);
+
+  return msg;
+}
